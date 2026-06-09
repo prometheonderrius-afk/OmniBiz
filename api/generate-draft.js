@@ -26,8 +26,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Call Gemini 1.5 Flash REST API directly to avoid dependencies
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // Call Gemini 2.5 Flash REST API directly to avoid dependencies
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
     
     const response = await fetch(url, {
       method: 'POST',
