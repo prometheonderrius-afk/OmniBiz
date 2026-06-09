@@ -65,10 +65,12 @@ export default function BillingManager({ selectedTier, setSelectedTier, addNotif
     if (tierId === 'free') {
       setSelectedTier(tierId);
       addNotification(`Billing Update: Switched subscription to ${planName}.`, "system");
+    } else if (tierId === 'starter') {
+      window.location.href = "https://buy.stripe.com/9B65kw8F47GW6k26etenS02";
+    } else if (tierId === 'pro') {
+      window.location.href = "https://buy.stripe.com/aFa9AMcVk4uKfUC46lenS01";
     } else {
-      // Simulate Stripe checkout redirection
-      const mockSessionId = `stripe_cs_test_${Math.random().toString(36).substring(2, 12).toUpperCase()}`;
-      window.location.href = `?session_id=${mockSessionId}&tier=${tierId}`;
+      alert("Enterprise plan onboarding: Please contact our support team to configure API webhooks.");
     }
   };
 
