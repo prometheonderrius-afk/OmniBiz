@@ -66,9 +66,9 @@ export default function BillingManager({ selectedTier, setSelectedTier, addNotif
       setSelectedTier(tierId);
       addNotification(`Billing Update: Switched subscription to ${planName}.`, "system");
     } else if (tierId === 'starter') {
-      window.location.href = "https://buy.stripe.com/9B65kw8F47GW6k26etenS02";
+      window.location.href = "https://buy.stripe.com/00waEQ6wWe5k9weeKZenS03";
     } else if (tierId === 'pro') {
-      window.location.href = "https://buy.stripe.com/aFa9AMcVk4uKfUC46lenS01";
+      window.location.href = "https://buy.stripe.com/5kQfZa9J8aT87o6byNenS04";
     } else {
       alert("Enterprise plan onboarding: Please contact our support team to configure API webhooks.");
     }
