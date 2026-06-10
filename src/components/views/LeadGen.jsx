@@ -62,31 +62,67 @@ export default function LeadGen({
     setSelectedLead(null);
   };
 
-  const triggerScrape = () => {
-    setScraping(true);
-    setScrapeStep('Querying local search API for unverified maps profiles...');
-    
-    setTimeout(() => {
-      setScrapeStep('Matching target email addresses and phone records...');
-    }, 1200);
+  const triggerScrape = async () => {
+    if (!businessData.location || !businessData.category) {
+      alert("Please configure your business category and location in your profile onboarding first.");
+      return;
+    }
 
-    setTimeout(() => {
-      const newLead = {
-        id: Date.now(),
-        name: 'John Hammond',
-        company: 'InGen Bioscience',
-        email: 'j.hammond@ingen.com',
-        phone: '(555) 762-9012',
-        score: 96,
-        status: 'New',
-        source: 'AI Maps Finder',
-        notes: 'Needs premium local SEO cleanup support.'
-      };
-      setLeads(prev => [newLead, ...prev]);
-      setSavedHours(prev => prev + 0.8);
-      addNotification("Lead Finder Scrape: Successfully uncovered John Hammond (96% Match)", "lead");
+    setScraping(true);
+    setScrapeStep('Querying Google Search index for local listings...');
+
+    const stepTimer1 = setTimeout(() => {
+      setScrapeStep('Matching public phone listings and websites...');
+    }, 1500);
+
+    const stepTimer2 = setTimeout(() => {
+      setScrapeStep('Evaluating SEO gaps and technical scores...');
+    }, 3200);
+
+    try {
+      const response = await fetch('/api/discover-leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          category: businessData.category,
+          location: businessData.location
+        })
+      });
+
+      clearTimeout(stepTimer1);
+      clearTimeout(stepTimer2);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Lead discovery failed with status ${response.status}`);
+      }
+
+      const newLeads = await response.json();
+      
+      if (newLeads && newLeads.length > 0) {
+        const formattedLeads = newLeads.map((lead, index) => ({
+          ...lead,
+          id: Date.now() + index,
+          status: 'New'
+        }));
+        
+        setLeads(prev => [...formattedLeads, ...prev]);
+        setSavedHours(prev => prev + (formattedLeads.length * 0.8));
+        addNotification(`Lead Finder: Successfully discovered ${formattedLeads.length} new prospects in ${businessData.location}.`, "lead");
+      } else {
+        alert("Lead discovery completed, but no matching prospects were found. Try expanding your location or modifying your business category.");
+      }
+
+    } catch (error) {
+      clearTimeout(stepTimer1);
+      clearTimeout(stepTimer2);
+      console.error("Lead Discovery Error:", error);
+      alert(`Lead Discovery failed: ${error.message}. Please check your Gemini configuration.`);
+    } finally {
       setScraping(false);
-    }, 2500);
+    }
   };
 
   return (
