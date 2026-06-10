@@ -1,19 +1,3 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, collection, addDoc, updateDoc } from 'firebase/firestore';
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBvUqb-NMr_9lvE-7gpuSjnNImfzaYySKo",
-  authDomain: "wacom-canvas.firebaseapp.com",
-  projectId: "wacom-canvas",
-  storageBucket: "wacom-canvas.firebasestorage.app",
-  messagingSenderId: "948691108517",
-  appId: "1:948691108517:web:b8412b3428bec908ddc34c"
-};
-
-// Initialize Firebase once
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -33,33 +17,63 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'uid and text are required.' });
   }
 
+  const projectId = "wacom-canvas";
+
   try {
-    const userDocRef = doc(db, 'users', uid);
-    const userSnap = await getDoc(userDocRef);
+    // 1. Fetch the user profile from Firestore REST API
+    const userDocUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`;
+    const userResponse = await fetch(userDocUrl);
     
-    if (!userSnap.exists()) {
-      return res.status(404).json({ error: 'Business profile not found.' });
+    if (!userResponse.ok) {
+      return res.status(404).json({ error: 'Business profile not found or database error.' });
     }
 
-    const userData = userSnap.data();
-    const businessData = userData.businessData || {};
-    const autopilot = userData.autopilot || false;
-    const selectedTier = userData.selectedTier || 'free';
-    const savedHours = userData.savedHours || 12.5;
+    const userDoc = await userResponse.json();
+    
+    // Parse businessData and autopilot from Firestore REST format
+    // Firestore REST API returns fields in a structured format: e.g. fields: { autopilot: { booleanValue: true } }
+    const fields = userDoc.fields || {};
+    const autopilot = fields.autopilot?.booleanValue || false;
+    const selectedTier = fields.selectedTier?.stringValue || 'free';
+    const savedHours = parseFloat(fields.savedHours?.doubleValue || fields.savedHours?.integerValue || '12.5');
+    
+    let businessData = {};
+    if (fields.businessData?.mapValue?.fields) {
+      const bFields = fields.businessData.mapValue.fields;
+      businessData = {
+        name: bFields.name?.stringValue || '',
+        category: bFields.category?.stringValue || 'Local Business',
+        location: bFields.location?.stringValue || '',
+        goals: bFields.goals?.stringValue || ''
+      };
+    }
 
-    // 1. Write the visitor's message to Firestore
-    const chatColRef = collection(db, 'users', uid, 'webChat');
-    const visitorMsgRef = await addDoc(chatColRef, {
-      sender: 'Visitor',
-      text: text,
-      isUser: false,
-      createdAt: Date.now()
+    // 2. Write the visitor's message to Firestore using REST API
+    const chatColUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/webChat`;
+    const visitorMsgBody = {
+      fields: {
+        sender: { stringValue: 'Visitor' },
+        text: { stringValue: text },
+        isUser: { booleanValue: false },
+        createdAt: { integerValue: Date.now().toString() } // Firestore REST expects integer fields as strings representing numbers
+      }
+    };
+
+    const writeVisitorResponse = await fetch(chatColUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(visitorMsgBody)
     });
+
+    if (!writeVisitorResponse.ok) {
+      const writeErr = await writeVisitorResponse.json();
+      throw new Error(`Firestore REST write failed: ${JSON.stringify(writeErr)}`);
+    }
 
     let autoReplyText = '';
     let autoReplied = false;
 
-    // 2. If Autopilot is active and tier is eligible (pro or enterprise), trigger AI response
+    // 3. If Autopilot is active and tier is eligible (pro or enterprise), trigger AI response
     const hasAutopilot = autopilot && (selectedTier === 'pro' || selectedTier === 'enterprise');
     if (hasAutopilot) {
       const apiKey = process.env.GEMINI_API_KEY;
@@ -89,30 +103,56 @@ Draft a professional, friendly, and helpful live-chat response. Keep it under 60
           })
         });
 
-        const data = await response.json();
-        const draft = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const geminiData = await response.json();
+        const draft = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
         
         if (draft) {
           autoReplyText = draft.trim();
           
-          // Write the AI reply to Firestore
-          await addDoc(chatColRef, {
-            sender: 'OmniBiz AI',
-            text: autoReplyText,
-            isUser: true,
-            createdAt: Date.now()
+          // Write the AI reply to Firestore using REST API
+          const aiMsgBody = {
+            fields: {
+              sender: { stringValue: 'OmniBiz AI' },
+              text: { stringValue: autoReplyText },
+              isUser: { booleanValue: true },
+              createdAt: { integerValue: Date.now().toString() }
+            }
+          };
+
+          await fetch(chatColUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(aiMsgBody)
           });
 
-          // Update user stats
-          await updateDoc(userDocRef, {
-            savedHours: savedHours + 0.2
+          // Update user stats in Firestore (patch request for partial updates)
+          const patchUrl = `${userDocUrl}?updateMask.fieldPaths=savedHours`;
+          const patchBody = {
+            fields: {
+              savedHours: { doubleValue: savedHours + 0.2 }
+            }
+          };
+
+          await fetch(patchUrl, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(patchBody)
           });
 
-          // Add notification
-          await addDoc(collection(db, 'users', uid, 'notifications'), {
-            text: `Autopilot website chat auto-response dispatched to visitor.`,
-            type: "auto",
-            createdAt: Date.now()
+          // Write system notification using REST API
+          const notifyUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/notifications`;
+          const notifyBody = {
+            fields: {
+              text: { stringValue: `Autopilot website chat auto-response dispatched to visitor.` },
+              type: { stringValue: 'auto' },
+              createdAt: { integerValue: Date.now().toString() }
+            }
+          };
+
+          await fetch(notifyUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(notifyBody)
           });
 
           autoReplied = true;
@@ -122,14 +162,13 @@ Draft a professional, friendly, and helpful live-chat response. Keep it under 60
 
     return res.status(200).json({
       success: true,
-      visitorMessageId: visitorMsgRef.id,
       autopilotActive: hasAutopilot,
       autoReplied,
       reply: autoReplyText
     });
 
   } catch (error) {
-    console.error('Webchat webhook error:', error);
+    console.error('Webchat REST API webhook error:', error);
     return res.status(500).json({ error: 'Internal server error', message: error.message });
   }
 }
