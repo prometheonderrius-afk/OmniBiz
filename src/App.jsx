@@ -165,8 +165,24 @@ export default function App() {
       // Auto-approve pending emails
       emails.forEach(async (e) => {
         if (e.status === 'Pending Approval') {
-          const docRef = doc(db, 'users', user.uid, 'emails', e.id);
-          await updateDoc(docRef, { status: 'Auto-Replied' });
+          const recipient = e.email || 'recipient@example.com';
+          try {
+            await fetch('/api/send-email', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                to: recipient,
+                subject: `Re: ${e.subject}`,
+                body: e.draft
+              })
+            });
+            const docRef = doc(db, 'users', user.uid, 'emails', e.id);
+            await updateDoc(docRef, { status: 'Auto-Replied' });
+          } catch (err) {
+            console.error("Autopilot email dispatch error:", err);
+          }
         }
       });
 
@@ -258,8 +274,8 @@ export default function App() {
     ]);
 
     await seedCollection('emails', [
-      { sender: 'Liam Neeson', subject: 'Custom Quote Inquiry', body: 'Hi, do you provide customized service contracts? I need a detailed quote for my warehouse facility by tomorrow morning.', time: '10 mins ago', status: 'Pending Approval', draft: 'Hi Liam, yes, we customize our service contracts to fit warehouse specifications. Our AI has generated a draft proposal based on your needs. Let us schedule a brief 5-minute call at your convenience.' },
-      { sender: 'Clara Oswald', subject: 'Business Hours Query', body: 'Are you open during the upcoming holiday weekend? I couldn\'t find details on your website.', time: '1 hour ago', status: 'Auto-Replied', draft: 'Hi Clara, thanks for reaching out! We are open from 9:00 AM to 3:00 PM during the holiday weekend. Let us know if you need anything else!' }
+      { sender: 'Liam Neeson', email: 'liam@example.com', subject: 'Custom Quote Inquiry', body: 'Hi, do you provide customized service contracts? I need a detailed quote for my warehouse facility by tomorrow morning.', time: '10 mins ago', status: 'Pending Approval', draft: 'Hi Liam, yes, we customize our service contracts to fit warehouse specifications. Our AI has generated a draft proposal based on your needs. Let us schedule a brief 5-minute call at your convenience.' },
+      { sender: 'Clara Oswald', email: 'clara@example.com', subject: 'Business Hours Query', body: 'Are you open during the upcoming holiday weekend? I couldn\'t find details on your website.', time: '1 hour ago', status: 'Auto-Replied', draft: 'Hi Clara, thanks for reaching out! We are open from 9:00 AM to 3:00 PM during the holiday weekend. Let us know if you need anything else!' }
     ]);
 
     await seedCollection('reviews', [

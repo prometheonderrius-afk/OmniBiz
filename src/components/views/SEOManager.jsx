@@ -28,41 +28,78 @@ export default function SEOManager({
     { name: `${businessData.name || 'Your Business'}`, seoScore: audits[0]?.score || 68, trafficEst: '850/mo', keywordGaps: 'Current Domain', rank: '#7', isSelf: true }
   ];
 
-  const runAudit = () => {
+  const runAudit = async () => {
+    if (!businessData.website) {
+      alert("Please update your business profile with a valid website URL in onboarding first.");
+      return;
+    }
+
     setRunningAudit(true);
-    setAuditProgress(10);
-    setAuditStep('Scanning site architecture and page structures...');
+    setAuditProgress(15);
+    setAuditStep('Contacting Gemini SEO Agent...');
 
-    setTimeout(() => {
-      setAuditProgress(40);
-      setAuditStep('Evaluating Core Web Vitals (LCP, INP, CLS)...');
-    }, 1000);
+    // Progress bar updates
+    const progressTimer1 = setTimeout(() => {
+      setAuditProgress(45);
+      setAuditStep('Running Google Search grounding queries...');
+    }, 1200);
 
-    setTimeout(() => {
-      setAuditProgress(70);
-      setAuditStep('Indexing Sitemap XML files and Google Maps listings...');
-    }, 2000);
+    const progressTimer2 = setTimeout(() => {
+      setAuditProgress(75);
+      setAuditStep('Parsing indexation footprint & technical meta...');
+    }, 2800);
 
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/seo-audit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          url: businessData.website,
+          category: businessData.category || 'Local Business'
+        })
+      });
+
+      clearTimeout(progressTimer1);
+      clearTimeout(progressTimer2);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Audit failed with status ${response.status}`);
+      }
+
+      const result = await response.json();
+      
       setAuditProgress(100);
       setAuditStep('Audit completed!');
-      
-      const newScore = Math.min(95, (audits[0]?.score || 68) + 4);
-      setAudits(prev => [
-        {
-          id: Date.now(),
-          date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-          score: newScore,
-          status: 'Completed',
-          issuesFound: Math.max(2, (audits[0]?.issuesFound || 14) - 3),
-          issuesFixed: (audits[0]?.issuesFixed || 0) + 3
-        },
-        ...prev
-      ]);
-      setSavedHours(prev => prev + 1.5);
-      addNotification(`SEO Audit completed successfully. Score improved to ${newScore}%!`, "seo");
+
+      setTimeout(() => {
+        const newScore = result.score || 70;
+        setAudits(prev => [
+          {
+            id: Date.now(),
+            date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+            score: newScore,
+            status: 'Completed',
+            issuesFound: result.issuesFound || 0,
+            issuesFixed: result.issuesFixed || 0,
+            reports: result.reports || []
+          },
+          ...prev
+        ]);
+        setSavedHours(prev => prev + 2.0);
+        addNotification(`SEO Audit completed for ${businessData.website}. Score: ${newScore}%!`, "seo");
+        setRunningAudit(false);
+      }, 600);
+
+    } catch (error) {
+      clearTimeout(progressTimer1);
+      clearTimeout(progressTimer2);
+      console.error("SEO Audit Error:", error);
+      alert(`SEO Audit failed: ${error.message}. Please verify your network connection and server settings.`);
       setRunningAudit(false);
-    }, 3200);
+    }
   };
 
   return (
@@ -148,6 +185,38 @@ export default function SEOManager({
               </tbody>
             </table>
           </div>
+
+          {/* Collapsible/List of reports for the most recent audit */}
+          {audits[0]?.reports && audits[0].reports.length > 0 && (
+            <div style={{
+              marginTop: '16px',
+              padding: '16px',
+              background: 'rgba(255,255,255,0.01)',
+              borderRadius: '8px',
+              border: '1px solid var(--border-glass)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}>
+              <h4 style={{ fontSize: '0.95rem', color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '6px', margin: '0' }}>
+                <span>📋</span> Gemini SEO Diagnostic Checklist
+              </h4>
+              <ul style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                paddingLeft: '20px',
+                margin: '0',
+                fontSize: '0.85rem',
+                color: 'var(--text-secondary)',
+                lineHeight: '1.4'
+              }}>
+                {audits[0].reports.map((report, idx) => (
+                  <li key={idx} style={{ listStyleType: 'square' }}>{report}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         {/* Right: Target Keywords tracker */}

@@ -19,11 +19,37 @@ export default function AutomationSuite({
   const [smsInput, setSmsInput] = useState('');
 
   // Handle Approve Email
-  const handleApproveEmail = (id) => {
-    setEmails(prev => prev.map(e => e.id === id ? { ...e, status: 'Auto-Replied' } : e));
-    setSavedHours(prev => prev + 1.0);
+  const handleApproveEmail = async (id) => {
     const email = emails.find(e => e.id === id);
-    addNotification(`Email Responder: Approved and sent reply to ${email?.sender}.`, "email");
+    if (!email) return;
+
+    const recipient = email.email || 'recipient@example.com';
+
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          to: recipient,
+          subject: `Re: ${email.subject}`,
+          body: email.draft
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || `Status ${response.status}`);
+      }
+
+      setEmails(prev => prev.map(e => e.id === id ? { ...e, status: 'Auto-Replied' } : e));
+      setSavedHours(prev => prev + 1.0);
+      addNotification(`Email Responder: Approved and successfully sent reply to ${email.sender} (${recipient}) via Resend.`, "email");
+    } catch (error) {
+      console.error("Failed to send email reply:", error);
+      alert(`Failed to send email: ${error.message}. Please verify your Resend API configuration on Vercel.`);
+    }
   };
 
   // Handle Approve Review

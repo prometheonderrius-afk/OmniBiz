@@ -30,13 +30,35 @@ export default function LeadGen({
     setEmailText(`Subject: Partnering with ${lead.company} - Automated Assessment\n\nHi ${lead.name.split(' ')[0]},\n\nI was reviewing local search keywords and noticed ${lead.company} stands out in your market. However, you might be missing out on local customer traffic due to search optimization gaps. \n\nAt ${businessData.name || 'our company'}, we specialize in automated solutions. I've prepared a custom visibility blueprint for you. Let me know if you would like me to email it over.\n\nBest regards,\nOwner, ${businessData.name || 'OmniBiz Client'}`);
   };
 
-  const handleSendOutreach = () => {
+  const handleSendOutreach = async () => {
     if (!selectedLead) return;
     
-    // Update lead status
-    setLeads(prev => prev.map(l => l.id === selectedLead.id ? { ...l, status: 'Outreached' } : l));
-    setSavedHours(prev => prev + 0.5);
-    addNotification(`Outreach sent to ${selectedLead.name} (${selectedLead.company}).`, "lead");
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          to: selectedLead.email,
+          subject: emailText.split('\n')[0].replace('Subject: ', ''),
+          body: emailText.split('\n').slice(1).join('\n').trim()
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || `Status ${response.status}`);
+      }
+
+      setLeads(prev => prev.map(l => l.id === selectedLead.id ? { ...l, status: 'Outreached' } : l));
+      setSavedHours(prev => prev + 0.5);
+      addNotification(`Outreach email successfully sent to ${selectedLead.name} (${selectedLead.company}) via Resend.`, "lead");
+    } catch (error) {
+      console.error("Failed to send outreach email:", error);
+      alert(`Failed to send outreach email: ${error.message}. Please check your Resend API configuration on Vercel.`);
+    }
+
     setSelectedLead(null);
   };
 
