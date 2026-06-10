@@ -5,8 +5,9 @@ export default function AutomationSuite({
   setEmails,
   reviews,
   setReviews,
-  smsLog,
-  setSmsLog,
+  webChatLog,
+  setWebChatLog,
+  userId,
   autopilot,
   setAutopilot,
   savedHours,
@@ -15,8 +16,8 @@ export default function AutomationSuite({
   isFeatureLocked,
   selectedTier
 }) {
-  const [subTab, setSubTab] = useState('email'); // 'email', 'reviews', 'textback'
-  const [smsInput, setSmsInput] = useState('');
+  const [subTab, setSubTab] = useState('email'); // 'email', 'reviews', 'webchat'
+  const [chatInput, setChatInput] = useState('');
 
   // Handle Approve Email
   const handleApproveEmail = async (id) => {
@@ -60,23 +61,19 @@ export default function AutomationSuite({
     addNotification(`Review Responder: Posted reply to ${review?.author}'s review.`, "review");
   };
 
-  // Handle Custom SMS Send
-  const handleSendSms = (textToSend = null) => {
-    const text = textToSend || smsInput;
+  // Handle Custom Web Chat Send
+  const handleSendWebChat = () => {
+    const text = chatInput;
     if (!text.trim()) return;
 
-    // Remove any draft marking
-    setSmsLog(prev => {
-      const clean = prev.filter(sms => !sms.isDraft);
-      return [
-        ...clean,
-        { id: Date.now(), sender: 'OmniBiz AI (Sent)', text, time: 'Just now', isUser: true }
-      ];
-    });
+    setWebChatLog(prev => [
+      ...prev,
+      { id: Date.now(), sender: 'Owner', text, isUser: true }
+    ]);
 
-    if (!textToSend) setSmsInput('');
-    setSavedHours(prev => prev + 0.4);
-    addNotification("SMS Agent: Text response delivered to client.", "callback");
+    setChatInput('');
+    setSavedHours(prev => prev + 0.2);
+    addNotification("Live Chat: Response sent to website visitor.", "callback");
   };
 
   // Autopilot Toggler handler
@@ -163,7 +160,7 @@ export default function AutomationSuite({
         {[
           { id: 'email', label: '📧 Email Responder', badgeCount: emails.filter(e => e.status === 'Pending Approval').length },
           { id: 'reviews', label: '⭐ Google/Yelp Reviews', badgeCount: reviews.filter(r => r.status === 'Pending Review').length },
-          { id: 'textback', label: '💬 Missed Call SMS', badgeCount: smsLog.filter(s => s.isDraft).length }
+          { id: 'webchat', label: '💬 Website Live Chat', badgeCount: 0 }
         ].map(tab => (
           <button
             key={tab.id}
@@ -287,37 +284,38 @@ export default function AutomationSuite({
           </div>
         )}
 
-        {/* PANEL 3: MISSED CALL SMS TEXTBACK */}
-        {subTab === 'textback' && (
+        {/* PANEL 3: WEBSITE LIVE CHAT RESPONDER */}
+        {subTab === 'webchat' && (
           <div style={{
             display: 'grid',
             gridTemplateColumns: '1.2fr 1fr',
             gap: '24px'
           }}>
-            {/* Phone simulator */}
+            {/* Phone/Chat simulator */}
             <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: '420px', padding: '0', overflow: 'hidden' }}>
-              {/* Phone header */}
+              {/* Chat header */}
               <div style={{ background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid var(--border-glass)', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-emerald)' }}></div>
-                <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>Active Callback Tunnel: Client #2049</span>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-cyan)' }}></div>
+                <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>Live Chat Session Log</span>
               </div>
 
               {/* Chat bubbles */}
               <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {smsLog.map(sms => (
-                  <div key={sms.id} style={{
-                    alignSelf: sms.isUser ? 'flex-end' : 'flex-start',
+                {webChatLog.map(chat => (
+                  <div key={chat.id} style={{
+                    alignSelf: chat.isUser ? 'flex-end' : 'flex-start',
                     maxWidth: '80%',
-                    background: sms.isDraft ? 'rgba(139, 92, 246, 0.05)' : sms.isUser ? 'linear-gradient(135deg, var(--accent-purple) 0%, #6d28d9 100%)' : 'rgba(255,255,255,0.05)',
-                    border: sms.isDraft ? '1px dashed rgba(139, 92, 246, 0.3)' : '1px solid var(--border-glass)',
+                    background: chat.isUser ? 'linear-gradient(135deg, var(--accent-purple) 0%, #6d28d9 100%)' : 'rgba(255,255,255,0.05)',
+                    border: '1px solid var(--border-glass)',
                     padding: '10px 14px',
-                    borderRadius: sms.isUser ? '12px 12px 0 12px' : '12px 12px 12px 0',
+                    borderRadius: chat.isUser ? '12px 12px 0 12px' : '12px 12px 12px 0',
                     fontSize: '0.8rem',
                     lineHeight: '1.4'
                   }}>
-                    {sms.isDraft && <div style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--accent-purple)', marginBottom: '4px' }}>🤖 AI APPROVED DRAFT:</div>}
-                    <div>{sms.text}</div>
-                    <div style={{ textAlign: 'right', fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px' }}>{sms.time}</div>
+                    <div style={{ fontSize: '0.65rem', fontWeight: '700', color: chat.isUser ? 'rgba(255,255,255,0.8)' : 'var(--accent-cyan)', marginBottom: '4px' }}>
+                      {chat.sender || (chat.isUser ? 'OmniBiz AI' : 'Visitor')}
+                    </div>
+                    <div>{chat.text}</div>
                   </div>
                 ))}
               </div>
@@ -327,13 +325,13 @@ export default function AutomationSuite({
                 <input
                   type="text"
                   className="glass-input"
-                  placeholder="Type override SMS text..."
-                  value={smsInput}
-                  onChange={(e) => setSmsInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleSendSms(); }}
+                  placeholder="Type message to visitor..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSendWebChat(); }}
                   style={{ fontSize: '0.8rem', padding: '8px 12px' }}
                 />
-                <button className="glass-button" style={{ padding: '8px 16px', borderRadius: '8px' }} onClick={() => handleSendSms()}>
+                <button className="glass-button" style={{ padding: '8px 16px', borderRadius: '8px' }} onClick={handleSendWebChat}>
                   Send
                 </button>
               </div>
@@ -341,30 +339,39 @@ export default function AutomationSuite({
 
             {/* Config details */}
             <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h3 style={{ fontSize: '1.1rem' }}>SMS Agent Setup</h3>
+              <h3 style={{ fontSize: '1.1rem' }}>Website Chat Integrator</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', lineHeight: '1.4' }}>
-                When an incoming client call is missed, the AI immediately initiates an SMS text tunnel to retain the lead.
+                Open this live-testing link in a side browser tab. Any messages typed there will sync here instantly, and your AI assistant will respond in real-time.
               </p>
               
-              {smsLog.some(sms => sms.isDraft) ? (
-                <div style={{ background: 'rgba(139, 92, 246, 0.05)', border: '1px solid rgba(139, 92, 246, 0.2)', padding: '14px', borderRadius: '8px' }}>
-                  <div style={{ fontWeight: '600', fontSize: '0.8rem', color: 'var(--accent-purple)', marginBottom: '4px' }}>Proposed Draft Action:</div>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '12px' }}>
-                    "{smsLog.find(sms => sms.isDraft)?.text}"
-                  </p>
-                  <button 
-                    className="glass-button" 
-                    style={{ width: '100%', padding: '6px 12px', fontSize: '0.75rem' }}
-                    onClick={() => handleSendSms(smsLog.find(sms => sms.isDraft)?.text)}
-                  >
-                    Send Draft Response
-                  </button>
-                </div>
-              ) : (
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>
-                  No active pending drafts. Call tunnels are caught up.
-                </div>
-              )}
+              <div style={{ 
+                background: 'rgba(139, 92, 246, 0.03)', 
+                border: '1px solid rgba(139, 92, 246, 0.15)', 
+                padding: '16px', 
+                borderRadius: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <div style={{ fontWeight: '700', fontSize: '0.75rem', color: 'var(--accent-purple)' }}>Widget Test URL:</div>
+                <input
+                  type="text"
+                  className="glass-input"
+                  readOnly
+                  value={`${window.location.origin}/widget.html?uid=${userId}`}
+                  style={{ fontSize: '0.7rem', padding: '6px 10px', background: 'rgba(0,0,0,0.2)' }}
+                  onClick={(e) => e.target.select()}
+                />
+                <a 
+                  href={`/widget.html?uid=${userId}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="glass-button" 
+                  style={{ display: 'block', width: '100%', padding: '8px 12px', fontSize: '0.75rem', textAlign: 'center', textDecoration: 'none', marginTop: '6px' }}
+                >
+                  Launch Chat Widget ↗
+                </a>
+              </div>
             </div>
           </div>
         )}

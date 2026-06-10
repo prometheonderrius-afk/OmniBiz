@@ -60,6 +60,7 @@ export default function App() {
   const [emails, setEmails] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [smsLog, setSmsLog] = useState([]);
+  const [webChatLog, setWebChatLog] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
   const [contracts, setContracts] = useState([]);
 
@@ -140,6 +141,12 @@ export default function App() {
       list.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)); // SMS in chronological order
       setSmsLog(list);
     });
+    const unsubWebChatLog = onSnapshot(collection(db, 'users', user.uid, 'webChat'), (snap) => {
+      const list = [];
+      snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+      list.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)); // Chronological order
+      setWebChatLog(list);
+    });
     const unsubCampaigns = syncCollection('campaigns', setCampaigns);
     const unsubContracts = syncCollection('contracts', setContracts);
     const unsubNotifications = syncCollection('notifications', setNotifications);
@@ -151,6 +158,7 @@ export default function App() {
       unsubEmails();
       unsubReviews();
       unsubSmsLog();
+      unsubWebChatLog();
       unsubCampaigns();
       unsubContracts();
       unsubNotifications();
@@ -525,14 +533,15 @@ export default function App() {
                       await setDoc(rDocRef, { ...rItem, createdAt: Date.now() });
                     }
                   }}
-                  smsLog={smsLog}
-                  setSmsLog={async (smsSetter) => {
-                    const newSms = typeof smsSetter === 'function' ? smsSetter(smsLog) : smsSetter;
-                    for (const sItem of newSms) {
-                      const sDocRef = doc(db, 'users', user.uid, 'smsLog', sItem.id.toString());
-                      await setDoc(sDocRef, { ...sItem, createdAt: Date.now() });
+                  webChatLog={webChatLog}
+                  setWebChatLog={async (chatSetter) => {
+                    const newChat = typeof chatSetter === 'function' ? chatSetter(webChatLog) : chatSetter;
+                    for (const cItem of newChat) {
+                      const cDocRef = doc(db, 'users', user.uid, 'webChat', cItem.id.toString());
+                      await setDoc(cDocRef, { ...cItem, createdAt: Date.now() });
                     }
                   }}
+                  userId={user.uid}
                   autopilot={autopilot}
                   setAutopilot={async (autoVal) => {
                     setAutopilot(autoVal);
