@@ -26,63 +26,28 @@ export default async function handler(req, res) {
   }
 
   const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-  
-  const prompt = `Search Google for real local businesses operating in the category: "${category}" within the location: "${location}".
-Locate 3 real businesses. Analyze their digital presence, websites, and search indexing status.
-For each business, output contact details, an alignment score (higher means they have a poorer SEO footprint and are a hotter sales lead), and a notes string describing their specific marketing or SEO gaps.
-If phone number, name, or email is not publicly visible in search snippets, use a realistic fallback or placeholder (like "Owner" or a standard placeholder domain email).
 
-Output format MUST be a raw JSON array matching the schema:
-[
-  {
-    "name": string (contact person name, e.g. "Store Manager" or inferred owner's name),
-    "company": string (official name of the business found),
-    "email": string (public contact email address, or inferred format like info@domain.com),
-    "phone": string (public phone number of the business),
-    "score": number (integer from 0 to 100 representing sales priority),
-    "source": string (e.g., "AI Maps Finder"),
-    "notes": string (short description of their search optimization gaps, e.g. "Lacks optimized title tags and has zero mobile sitemaps.")
-  }
-]
+  let rawSearchContent = '';
+  let primarySuccess = false;
 
-Do NOT wrap the JSON in markdown code blocks like \`\`\`json. Output ONLY raw JSON.`;
-
-  const requestBody = {
-    contents: [{
-      parts: [{
-        text: prompt
-      }]
-    }],
-    tools: [
-      {
-        google_search: {}
-      }
-    ],
-    generationConfig: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: "ARRAY",
-        items: {
-          type: "OBJECT",
-          properties: {
-            name: { type: "STRING" },
-            company: { type: "STRING" },
-            email: { type: "STRING" },
-            phone: { type: "STRING" },
-            score: { type: "INTEGER" },
-            source: { type: "STRING" },
-            notes: { type: "STRING" }
-          },
-          required: ["name", "company", "email", "phone", "score", "source", "notes"]
-        }
-      },
-      maxOutputTokens: 1200,
-      temperature: 0.3
-    }
-  };
-
+  // 1. Primary Attempt: Call Gemini with google_search grounding (plain text output, no responseSchema)
   try {
-    // 1. Primary Attempt: Call Gemini with google_search grounding
+    const searchPrompt = `Search Google for real local businesses operating in the category: "${category}" within the location: "${location}".
+Locate 3 real businesses. Write down their contact person name (if you can find or infer one, e.g. "Store Manager" or "Owner"), official business name, public email address, public phone number, and a brief description of their specific digital presence or SEO gaps (e.g. lacks mobile sitemaps, missing headers).`;
+
+    const requestBody = {
+      contents: [{
+        parts: [{
+          text: searchPrompt
+        }]
+      }],
+      tools: [
+        {
+          google_search: {}
+        }
+      ]
+    };
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -90,76 +55,134 @@ Do NOT wrap the JSON in markdown code blocks like \`\`\`json. Output ONLY raw JS
     });
 
     const data = await response.json();
-    
-    // If the call succeeds and returns output, parse and return it
-    if (!data.error) {
-      const outputText = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-      return res.status(200).json(JSON.parse(outputText));
+    if (data.error) {
+      console.warn("Primary search grounding failed:", data.error);
+    } else {
+      rawSearchContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (rawSearchContent) {
+        primarySuccess = true;
+      }
     }
+  } catch (err) {
+    console.warn("Primary search grounding error:", err);
+  }
 
-    console.warn("Primary search grounding failed:", data.error);
+  // 2. Fallback: If search grounding fails (due to key restrictions or billing),
+  // make a standard plain text call to generate mock realistic leads.
+  if (!primarySuccess) {
+    console.log("Using fallback plain-text generation for leads...");
+    try {
+      const fallbackRequestBody = {
+        contents: [{
+          parts: [{
+            text: `Generate 3 highly realistic, mock local business sales leads for the category: "${category}" in the location: "${location}".
+For each lead, provide:
+1. Contact person name (e.g. "Owner" or inferred owner's name)
+2. Business/Company name
+3. Contact email address (e.g., info@domain.com)
+4. Phone number
+5. specific local marketing/SEO audit notes detailing why they need SEO support.`
+          }]
+        }]
+      };
 
-    // 2. Fallback: If google_search fails (due to key restrictions or billing),
-    // make a standard generation call without any grounding tools.
-    const fallbackRequestBody = {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fallbackRequestBody)
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        console.error("Fallback plain text generation failed:", data.error);
+        return res.status(502).json({
+          error: 'Gemini API Fallback Error',
+          message: data.error.message || 'Failed to generate mock leads.',
+          details: data.error
+        });
+      }
+      rawSearchContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    } catch (err) {
+      console.error("Fallback plain text generation error:", err);
+      return res.status(500).json({ error: 'Internal server error', message: err.message });
+    }
+  }
+
+  if (!rawSearchContent) {
+    return res.status(502).json({
+      error: 'Gemini API Error',
+      message: 'Failed to retrieve lead data content from Gemini API.'
+    });
+  }
+
+  // 3. Formatting Step: Call Gemini to structure the rawSearchContent text into a JSON array using responseSchema
+  try {
+    const formatRequestBody = {
       contents: [{
         parts: [{
-          text: `Generate 3 highly realistic, mock local business sales leads for the category: "${category}" in the location: "${location}".
-Generate names, phone numbers, emails, and specific local marketing audit notes detailing why they need SEO support.
-Output format MUST be a raw JSON array matching the schema:
-[
-  {
-    "name": string (contact person name, e.g. "Owner" or inferred owner's name),
-    "company": string (name of the business),
-    "email": string (contact email address, e.g., info@domain.com),
-    "phone": string (phone number),
-    "score": number (integer from 0 to 100),
-    "source": "AI Maps Finder",
-    "notes": string (specific marketing gaps description)
-  }
-]
-Do NOT wrap the JSON in markdown code blocks like \`\`\`json. Output ONLY raw JSON.`
+          text: `You are an expert data parsing assistant.
+Analyze the following text describing local business leads:
+"${rawSearchContent}"
+
+Extract these businesses into a structured JSON object matching the response schema. 
+For each business, compute a sales priority score (integer from 0 to 100 representing how desperately they need SEO help, higher means they have a poorer SEO footprint and are a hotter sales lead).
+Specify the source as "AI Maps Finder".
+Format the output strictly according to the schema.`
         }]
       }],
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: "ARRAY",
-          items: {
-            type: "OBJECT",
-            properties: {
-              name: { type: "STRING" },
-              company: { type: "STRING" },
-              email: { type: "STRING" },
-              phone: { type: "STRING" },
-              score: { type: "INTEGER" },
-              source: { type: "STRING" },
-              notes: { type: "STRING" }
-            },
-            required: ["name", "company", "email", "phone", "score", "source", "notes"]
-          }
+          type: "object",
+          properties: {
+            leads: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  company: { type: "string" },
+                  email: { type: "string" },
+                  phone: { type: "string" },
+                  score: { type: "integer" },
+                  source: { type: "string" },
+                  notes: { type: "string" }
+                },
+                required: ["name", "company", "email", "phone", "score", "source", "notes"]
+              }
+            }
+          },
+          required: ["leads"]
         },
-        maxOutputTokens: 1200,
-        temperature: 0.4
+        maxOutputTokens: 1500,
+        temperature: 0.1
       }
     };
 
-    const fallbackResponse = await fetch(apiUrl, {
+    const formatResponse = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(fallbackRequestBody)
+      body: JSON.stringify(formatRequestBody)
     });
 
-    const fallbackData = await fallbackResponse.json();
-    if (fallbackData.error) {
-      return res.status(502).json({ error: 'Gemini API Fallback Error', details: fallbackData.error });
+    const formatData = await formatResponse.json();
+    if (formatData.error) {
+      console.error("JSON formatting failed:", formatData.error);
+      return res.status(502).json({
+        error: 'Gemini Formatting Error',
+        message: formatData.error.message || 'Failed to structure lead data into JSON.',
+        details: formatData.error
+      });
     }
 
-    const fallbackOutput = fallbackData.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-    return res.status(200).json(JSON.parse(fallbackOutput));
+    const outputText = formatData.candidates?.[0]?.content?.parts?.[0]?.text || '{"leads":[]}';
+    const parsedData = JSON.parse(outputText);
     
+    // Return the leads array directly, satisfying the frontend contract
+    return res.status(200).json(parsedData.leads || []);
+
   } catch (error) {
-    console.error('Gemini Lead Finder error:', error);
+    console.error('Gemini Lead Finder structuring error:', error);
     return res.status(500).json({ error: 'Internal server error', message: error.message });
   }
 }
