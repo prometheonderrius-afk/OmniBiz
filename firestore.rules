@@ -1,19 +1,24 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Restrict access so that authenticated users can only read/write their own nested profile and subcollections
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
-      // Allow public website visitors (and serverless APIs) to write and read chat messages
-      match /webChat/{messageId} {
+      // Explicitly allow public visitors to read & create web chat messages
+      match /webChat/{msgId} {
         allow read, create: if true;
         allow update, delete: if request.auth != null && request.auth.uid == userId;
       }
-      
-      match /{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
+
+      // Explicitly protect all other business subcollections (only owner can read/write)
+      match /leads/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
+      match /audits/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
+      match /emails/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
+      match /reviews/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
+      match /smsLog/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
+      match /campaigns/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
+      match /contracts/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
+      match /notifications/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
     }
   }
 }
