@@ -1,3 +1,18 @@
+function parseStructuredJSON(text) {
+  let cleanText = text.trim();
+  if (cleanText.startsWith('```')) {
+    cleanText = cleanText.replace(/^```(?:json)?\n?/, '');
+    cleanText = cleanText.replace(/\n?```$/, '');
+    cleanText = cleanText.trim();
+  }
+  try {
+    return JSON.parse(cleanText);
+  } catch (err) {
+    console.error("Failed to parse JSON. Raw text was:", text);
+    throw new Error(`JSON parsing failed: ${err.message}. Raw output length: ${text.length}. Sample: ${text.slice(0, 100)}`);
+  }
+}
+
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -129,6 +144,10 @@ Extract the audit into a structured JSON object matching the response schema:
 - issuesFound: integer representing the count of issues/problems identified
 - issuesFixed: integer representing the count of optimized areas already resolved
 - reports: array of strings containing detailed, actionable diagnostic bullet points based on the findings
+
+CRITICAL INSTRUCTIONS FOR JSON FORMATTING:
+- Ensure all string values are on a single line. Do NOT include literal newlines (\\n) or control characters inside any JSON string fields.
+- Do NOT use double quotes (\") inside any string fields (such as audit reports). If a quote is needed, use single quotes (') instead.
 Format the output strictly according to the schema.`
         }]
       }],
@@ -169,7 +188,8 @@ Format the output strictly according to the schema.`
     }
 
     const outputText = formatData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    return res.status(200).json(JSON.parse(outputText));
+    const parsedData = parseStructuredJSON(outputText);
+    return res.status(200).json(parsedData);
 
   } catch (error) {
     console.error('Gemini SEO structuring error:', error);

@@ -1,3 +1,18 @@
+function parseStructuredJSON(text) {
+  let cleanText = text.trim();
+  if (cleanText.startsWith('```')) {
+    cleanText = cleanText.replace(/^```(?:json)?\n?/, '');
+    cleanText = cleanText.replace(/\n?```$/, '');
+    cleanText = cleanText.trim();
+  }
+  try {
+    return JSON.parse(cleanText);
+  } catch (err) {
+    console.error("Failed to parse JSON. Raw text was:", text);
+    throw new Error(`JSON parsing failed: ${err.message}. Raw output length: ${text.length}. Sample: ${text.slice(0, 100)}`);
+  }
+}
+
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -128,6 +143,10 @@ Analyze the following text describing local business leads:
 Extract these businesses into a structured JSON object matching the response schema. 
 For each business, compute a sales priority score (integer from 0 to 100 representing how desperately they need SEO help, higher means they have a poorer SEO footprint and are a hotter sales lead).
 Specify the source as "AI Maps Finder".
+
+CRITICAL INSTRUCTIONS FOR JSON FORMATTING:
+- Ensure all string values are on a single line. Do NOT include literal newlines (\\n) or control characters inside any JSON string fields.
+- Do NOT use double quotes (\") inside any string fields (such as company names or notes). If a quote is needed, use single quotes (') instead.
 Format the output strictly according to the schema.`
         }]
       }],
@@ -177,7 +196,7 @@ Format the output strictly according to the schema.`
     }
 
     const outputText = formatData.candidates?.[0]?.content?.parts?.[0]?.text || '{"leads":[]}';
-    const parsedData = JSON.parse(outputText);
+    const parsedData = parseStructuredJSON(outputText);
     
     // Return the leads array directly, satisfying the frontend contract
     return res.status(200).json(parsedData.leads || []);
