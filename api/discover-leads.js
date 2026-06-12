@@ -161,20 +161,20 @@ Format the output strictly according to the schema.`
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: "object",
+          type: "OBJECT",
           properties: {
             leads: {
-              type: "array",
+              type: "ARRAY",
               items: {
-                type: "object",
+                type: "OBJECT",
                 properties: {
-                  name: { type: "string" },
-                  company: { type: "string" },
-                  email: { type: "string" },
-                  phone: { type: "string" },
-                  score: { type: "integer" },
-                  source: { type: "string" },
-                  notes: { type: "string" }
+                  name: { type: "STRING" },
+                  company: { type: "STRING" },
+                  email: { type: "STRING" },
+                  phone: { type: "STRING" },
+                  score: { type: "INTEGER" },
+                  source: { type: "STRING" },
+                  notes: { type: "STRING" }
                 },
                 required: ["name", "company", "email", "phone", "score", "source", "notes"]
               }

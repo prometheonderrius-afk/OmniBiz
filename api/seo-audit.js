@@ -162,14 +162,14 @@ Format the output strictly according to the schema.`
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: "object",
+          type: "OBJECT",
           properties: {
-            score: { type: "integer" },
-            issuesFound: { type: "integer" },
-            issuesFixed: { type: "integer" },
+            score: { type: "INTEGER" },
+            issuesFound: { type: "INTEGER" },
+            issuesFixed: { type: "INTEGER" },
             reports: {
-              type: "array",
-              items: { type: "string" }
+              type: "ARRAY",
+              items: { type: "STRING" }
             }
           },
           required: ["score", "issuesFound", "issuesFixed", "reports"]
