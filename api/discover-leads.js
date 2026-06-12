@@ -25,12 +25,13 @@ export default async function handler(req, res) {
     });
   }
 
-  const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  // Use the v1beta endpoint where structured outputs and grounding features are fully supported
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
   let rawSearchContent = '';
   let primarySuccess = false;
 
-  // 1. Primary Attempt: Call Gemini with google_search grounding (plain text output, no responseSchema)
+  // 1. Primary Attempt: Call Gemini with google_search grounding (plain text output, no response_schema)
   try {
     const searchPrompt = `Search Google for real local businesses operating in the category: "${category}" within the location: "${location}".
 Locate 3 real businesses. Write down their contact person name (if you can find or infer one, e.g. "Store Manager" or "Owner"), official business name, public email address, public phone number, and a brief description of their specific digital presence or SEO gaps (e.g. lacks mobile sitemaps, missing headers).`;
@@ -115,7 +116,7 @@ For each lead, provide:
     });
   }
 
-  // 3. Formatting Step: Call Gemini to structure the rawSearchContent text into a JSON array using responseSchema
+  // 3. Formatting Step: Call Gemini to structure the rawSearchContent text into a JSON array using response_schema
   try {
     const formatRequestBody = {
       contents: [{
@@ -130,9 +131,9 @@ Specify the source as "AI Maps Finder".
 Format the output strictly according to the schema.`
         }]
       }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
+      generation_config: {
+        response_mime_type: "application/json",
+        response_schema: {
           type: "object",
           properties: {
             leads: {
@@ -154,7 +155,7 @@ Format the output strictly according to the schema.`
           },
           required: ["leads"]
         },
-        maxOutputTokens: 1500,
+        max_output_tokens: 1500,
         temperature: 0.1
       }
     };

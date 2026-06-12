@@ -25,12 +25,13 @@ export default async function handler(req, res) {
     });
   }
 
-  const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  // Use the v1beta endpoint where structured outputs and grounding features are fully supported
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
   let rawAuditContent = '';
   let primarySuccess = false;
 
-  // 1. Primary Attempt: Call Gemini with google_search grounding (plain text output, no responseSchema)
+  // 1. Primary Attempt: Call Gemini with google_search grounding (plain text output, no response_schema)
   try {
     const searchPrompt = `Perform a comprehensive SEO and local visibility audit for the website URL: "${url}".
 The business category is: "${category}".
@@ -114,7 +115,7 @@ Provide a realistic SEO health score, technical issues count, and resolved items
     });
   }
 
-  // 3. Formatting Step: Call Gemini to structure the rawAuditContent text into a JSON object using responseSchema
+  // 3. Formatting Step: Call Gemini to structure the rawAuditContent text into a JSON object using response_schema
   try {
     const formatRequestBody = {
       contents: [{
@@ -131,9 +132,9 @@ Extract the audit into a structured JSON object matching the response schema:
 Format the output strictly according to the schema.`
         }]
       }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
+      generation_config: {
+        response_mime_type: "application/json",
+        response_schema: {
           type: "object",
           properties: {
             score: { type: "integer" },
@@ -146,7 +147,7 @@ Format the output strictly according to the schema.`
           },
           required: ["score", "issuesFound", "issuesFixed", "reports"]
         },
-        maxOutputTokens: 1200,
+        max_output_tokens: 1200,
         temperature: 0.1
       }
     };
