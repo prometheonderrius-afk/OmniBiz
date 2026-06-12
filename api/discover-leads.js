@@ -46,7 +46,7 @@ export default async function handler(req, res) {
   let rawSearchContent = '';
   let primarySuccess = false;
 
-  // 1. Primary Attempt: Call Gemini with google_search grounding (plain text output, no response_schema)
+  // 1. Primary Attempt: Call Gemini with google_search grounding (plain text output, no responseSchema)
   try {
     const searchPrompt = `Search Google for real local businesses operating in the category: "${category}" within the location: "${location}".
 Locate 3 real businesses. Write down their contact person name (if you can find or infer one, e.g. "Store Manager" or "Owner"), official business name, public email address, public phone number, and a brief description of their specific digital presence or SEO gaps (e.g. lacks mobile sitemaps, missing headers).`;
@@ -61,7 +61,11 @@ Locate 3 real businesses. Write down their contact person name (if you can find 
         {
           google_search: {}
         }
-      ]
+      ],
+      generationConfig: {
+        maxOutputTokens: 1000,
+        temperature: 0.4
+      }
     };
 
     const response = await fetch(apiUrl, {
@@ -99,7 +103,11 @@ For each lead, provide:
 4. Phone number
 5. specific local marketing/SEO audit notes detailing why they need SEO support.`
           }]
-        }]
+        }],
+        generationConfig: {
+          maxOutputTokens: 1000,
+          temperature: 0.4
+        }
       };
 
       const response = await fetch(apiUrl, {
@@ -131,7 +139,7 @@ For each lead, provide:
     });
   }
 
-  // 3. Formatting Step: Call Gemini to structure the rawSearchContent text into a JSON array using response_schema
+  // 3. Formatting Step: Call Gemini to structure the rawSearchContent text into a JSON array using responseSchema
   try {
     const formatRequestBody = {
       contents: [{
@@ -150,9 +158,9 @@ CRITICAL INSTRUCTIONS FOR JSON FORMATTING:
 Format the output strictly according to the schema.`
         }]
       }],
-      generation_config: {
-        response_mime_type: "application/json",
-        response_schema: {
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
           type: "object",
           properties: {
             leads: {
@@ -174,7 +182,7 @@ Format the output strictly according to the schema.`
           },
           required: ["leads"]
         },
-        max_output_tokens: 1500,
+        maxOutputTokens: 1500,
         temperature: 0.1
       }
     };

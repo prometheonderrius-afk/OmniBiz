@@ -46,7 +46,7 @@ export default async function handler(req, res) {
   let rawAuditContent = '';
   let primarySuccess = false;
 
-  // 1. Primary Attempt: Call Gemini with google_search grounding (plain text output, no response_schema)
+  // 1. Primary Attempt: Call Gemini with google_search grounding (plain text output, no responseSchema)
   try {
     const searchPrompt = `Perform a comprehensive SEO and local visibility audit for the website URL: "${url}".
 The business category is: "${category}".
@@ -64,7 +64,11 @@ Write down a plain-text list of technical, structural, content issues, optimized
         {
           google_search: {}
         }
-      ]
+      ],
+      generationConfig: {
+        maxOutputTokens: 1000,
+        temperature: 0.4
+      }
     };
 
     const response = await fetch(apiUrl, {
@@ -98,7 +102,11 @@ Write down a plain-text list of technical, structural, content issues, optimized
 Even though you cannot access the live Google Search database right now, evaluate the site's target search presence based on standard visibility practices for this category.
 Provide a realistic SEO health score, technical issues count, and resolved items count as a detailed text list.`
           }]
-        }]
+        }],
+        generationConfig: {
+          maxOutputTokens: 1000,
+          temperature: 0.4
+        }
       };
 
       const response = await fetch(apiUrl, {
@@ -130,7 +138,7 @@ Provide a realistic SEO health score, technical issues count, and resolved items
     });
   }
 
-  // 3. Formatting Step: Call Gemini to structure the rawAuditContent text into a JSON object using response_schema
+  // 3. Formatting Step: Call Gemini to structure the rawAuditContent text into a JSON object using responseSchema
   try {
     const formatRequestBody = {
       contents: [{
@@ -151,9 +159,9 @@ CRITICAL INSTRUCTIONS FOR JSON FORMATTING:
 Format the output strictly according to the schema.`
         }]
       }],
-      generation_config: {
-        response_mime_type: "application/json",
-        response_schema: {
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
           type: "object",
           properties: {
             score: { type: "integer" },
@@ -166,7 +174,7 @@ Format the output strictly according to the schema.`
           },
           required: ["score", "issuesFound", "issuesFixed", "reports"]
         },
-        max_output_tokens: 1200,
+        maxOutputTokens: 1200,
         temperature: 0.1
       }
     };
