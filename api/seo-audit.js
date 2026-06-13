@@ -9,8 +9,43 @@ function parseStructuredJSON(text) {
     return JSON.parse(cleanText);
   } catch (err) {
     console.error("Failed to parse JSON. Raw text was:", text);
-    throw new Error(`JSON parsing failed: ${err.message}. Raw output length: ${text.length}. Sample: ${text.slice(0, 100)}`);
+    throw new Error(`JSON parsing failed: ${err.message}`);
   }
+}
+
+function parseDelimitedAudit(text) {
+  const scoreMatch = text.match(/SCORE:\s*(\d+)/i);
+  const issuesFoundMatch = text.match(/ISSUES_FOUND:\s*(\d+)/i);
+  const issuesFixedMatch = text.match(/ISSUES_FIXED:\s*(\d+)/i);
+  
+  const reports = [];
+  const lines = text.split('\n');
+  let readingReports = false;
+  
+  for (const line of lines) {
+    if (line.toUpperCase().includes('REPORT_START')) {
+      readingReports = true;
+      continue;
+    }
+    if (line.toUpperCase().includes('REPORT_END')) {
+      readingReports = false;
+      continue;
+    }
+    if (readingReports && line.trim()) {
+      // Remove leading dash, bullet, or numbers if any
+      const cleaned = line.replace(/^\s*[-*•\d+.]\s*/, '').trim();
+      if (cleaned) {
+        reports.push(cleaned);
+      }
+    }
+  }
+  
+  return {
+    score: scoreMatch ? parseInt(scoreMatch[1], 10) || 70 : 70,
+    issuesFound: issuesFoundMatch ? parseInt(issuesFoundMatch[1], 10) || 0 : 0,
+    issuesFixed: issuesFixedMatch ? parseInt(issuesFixedMatch[1], 10) || 0 : 0,
+    reports: reports.length > 0 ? reports : ["Check website metadata and search indexation status."]
+  };
 }
 
 export default async function handler(req, res) {
@@ -138,7 +173,8 @@ Provide a realistic SEO health score, technical issues count, and resolved items
     });
   }
 
-  // 3. Formatting Step: Call Gemini to structure the rawAuditContent text into a JSON object using responseSchema
+  // 3. Formatting Step: Try JSON Mode (without responseSchema to avoid truncation bugs)
+  let parsedAudit = null;
   try {
     const formatRequestBody = {
       contents: [{
@@ -147,7 +183,7 @@ Provide a realistic SEO health score, technical issues count, and resolved items
 Analyze the following text describing an SEO and website visibility audit:
 "${rawAuditContent}"
 
-Extract the audit into a structured JSON object matching the response schema:
+Extract the audit into a structured JSON object matching this schema:
 - score: integer from 0 to 100 representing the overall SEO score
 - issuesFound: integer representing the count of issues/problems identified
 - issuesFixed: integer representing the count of optimized areas already resolved
@@ -161,19 +197,6 @@ Format the output strictly according to the schema.`
       }],
       generationConfig: {
         responseMimeType: "application/json",
-        responseSchema: {
-          type: "OBJECT",
-          properties: {
-            score: { type: "INTEGER" },
-            issuesFound: { type: "INTEGER" },
-            issuesFixed: { type: "INTEGER" },
-            reports: {
-              type: "ARRAY",
-              items: { type: "STRING" }
-            }
-          },
-          required: ["score", "issuesFound", "issuesFixed", "reports"]
-        },
         maxOutputTokens: 1200,
         temperature: 0.1
       }
@@ -186,21 +209,71 @@ Format the output strictly according to the schema.`
     });
 
     const formatData = await formatResponse.json();
-    if (formatData.error) {
-      console.error("JSON formatting for SEO failed:", formatData.error);
-      return res.status(502).json({
-        error: 'Gemini Formatting Error',
-        message: formatData.error.message || 'Failed to structure SEO audit data into JSON.',
-        details: formatData.error
-      });
+    if (!formatData.error) {
+      const outputText = formatData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (outputText) {
+        parsedAudit = parseStructuredJSON(outputText);
+      }
+    } else {
+      console.warn("JSON formatting for SEO API error:", formatData.error);
     }
-
-    const outputText = formatData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    const parsedData = parseStructuredJSON(outputText);
-    return res.status(200).json(parsedData);
-
-  } catch (error) {
-    console.error('Gemini SEO structuring error:', error);
-    return res.status(500).json({ error: 'Internal server error', message: error.message });
+  } catch (jsonError) {
+    console.warn("JSON formatting for SEO failed, trying delimited text fallback...", jsonError);
   }
+
+  // 4. Delimited Text Fallback: If JSON parsing failed
+  if (!parsedAudit || typeof parsedAudit.score !== 'number') {
+    console.log("Executing delimited text formatting fallback for SEO audit...");
+    try {
+      const delimitedPrompt = `You are an expert data parsing assistant.
+Analyze the following text describing an SEO and website visibility audit:
+"${rawAuditContent}"
+
+Extract the audit details into a delimited text block. Use the exact labels below:
+SCORE: integer from 0 to 100
+ISSUES_FOUND: integer
+ISSUES_FIXED: integer
+REPORT_START
+List each actionable SEO audit recommendation bullet point on a new line
+REPORT_END
+
+Do NOT include any other text or explanation. Output strictly the delimited audit.`;
+
+      const requestBody = {
+        contents: [{
+          parts: [{
+            text: delimitedPrompt
+          }]
+        }],
+        generationConfig: {
+          maxOutputTokens: 1000,
+          temperature: 0.1
+        }
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        console.error("Delimited SEO fallback failed:", data.error);
+        return res.status(502).json({
+          error: 'Gemini Formatting Error',
+          message: data.error.message || 'Failed to parse SEO audit.',
+          details: data.error
+        });
+      }
+
+      const outputText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      parsedAudit = parseDelimitedAudit(outputText);
+    } catch (err) {
+      console.error("Delimited SEO fallback error:", err);
+      return res.status(500).json({ error: 'Internal server error', message: err.message });
+    }
+  }
+
+  return res.status(200).json(parsedAudit);
 }

@@ -9,8 +9,38 @@ function parseStructuredJSON(text) {
     return JSON.parse(cleanText);
   } catch (err) {
     console.error("Failed to parse JSON. Raw text was:", text);
-    throw new Error(`JSON parsing failed: ${err.message}. Raw output length: ${text.length}. Sample: ${text.slice(0, 100)}`);
+    throw new Error(`JSON parsing failed: ${err.message}`);
   }
+}
+
+function parseDelimitedLeads(text) {
+  const leads = [];
+  const blocks = text.split(/LEAD_START/i);
+  
+  for (const block of blocks) {
+    if (!block.trim()) continue;
+    
+    const nameMatch = block.match(/NAME:\s*(.*)/i);
+    const companyMatch = block.match(/COMPANY:\s*(.*)/i);
+    const emailMatch = block.match(/EMAIL:\s*(.*)/i);
+    const phoneMatch = block.match(/PHONE:\s*(.*)/i);
+    const scoreMatch = block.match(/SCORE:\s*(.*)/i);
+    const notesMatch = block.match(/NOTES:\s*(.*)/i);
+    
+    if (companyMatch) {
+      leads.push({
+        name: nameMatch ? nameMatch[1].trim() : 'Owner',
+        company: companyMatch[1].trim(),
+        email: emailMatch ? emailMatch[1].trim() : 'info@domain.com',
+        phone: phoneMatch ? phoneMatch[1].trim() : '',
+        score: scoreMatch ? parseInt(scoreMatch[1].trim(), 10) || 70 : 70,
+        source: 'AI Maps Finder',
+        notes: notesMatch ? notesMatch[1].trim() : 'Lacks search presence.'
+      });
+    }
+  }
+  
+  return leads;
 }
 
 export default async function handler(req, res) {
@@ -139,7 +169,8 @@ For each lead, provide:
     });
   }
 
-  // 3. Formatting Step: Call Gemini to structure the rawSearchContent text into a JSON array using responseSchema
+  // 3. Formatting Step: Try JSON Mode (without responseSchema to avoid truncation bugs)
+  let parsedLeads = null;
   try {
     const formatRequestBody = {
       contents: [{
@@ -148,40 +179,30 @@ For each lead, provide:
 Analyze the following text describing local business leads:
 "${rawSearchContent}"
 
-Extract these businesses into a structured JSON object matching the response schema. 
-For each business, compute a sales priority score (integer from 0 to 100 representing how desperately they need SEO help, higher means they have a poorer SEO footprint and are a hotter sales lead).
-Specify the source as "AI Maps Finder".
+Extract these businesses into a structured JSON object. 
+The JSON output MUST match this structure:
+{
+  "leads": [
+    {
+      "name": "contact person name (e.g. 'Store Manager' or inferred owner's name)",
+      "company": "official name of the business",
+      "email": "contact email address (e.g., info@domain.com)",
+      "phone": "phone number",
+      "score": 85, // integer from 0 to 100 representing how desperately they need SEO help
+      "source": "AI Maps Finder",
+      "notes": "SEO gaps description"
+    }
+  ]
+}
 
 CRITICAL INSTRUCTIONS FOR JSON FORMATTING:
 - Ensure all string values are on a single line. Do NOT include literal newlines (\\n) or control characters inside any JSON string fields.
 - Do NOT use double quotes (\") inside any string fields (such as company names or notes). If a quote is needed, use single quotes (') instead.
-Format the output strictly according to the schema.`
+Format the output strictly according to this structure.`
         }]
       }],
       generationConfig: {
         responseMimeType: "application/json",
-        responseSchema: {
-          type: "OBJECT",
-          properties: {
-            leads: {
-              type: "ARRAY",
-              items: {
-                type: "OBJECT",
-                properties: {
-                  name: { type: "STRING" },
-                  company: { type: "STRING" },
-                  email: { type: "STRING" },
-                  phone: { type: "STRING" },
-                  score: { type: "INTEGER" },
-                  source: { type: "STRING" },
-                  notes: { type: "STRING" }
-                },
-                required: ["name", "company", "email", "phone", "score", "source", "notes"]
-              }
-            }
-          },
-          required: ["leads"]
-        },
         maxOutputTokens: 1500,
         temperature: 0.1
       }
@@ -194,23 +215,75 @@ Format the output strictly according to the schema.`
     });
 
     const formatData = await formatResponse.json();
-    if (formatData.error) {
-      console.error("JSON formatting failed:", formatData.error);
-      return res.status(502).json({
-        error: 'Gemini Formatting Error',
-        message: formatData.error.message || 'Failed to structure lead data into JSON.',
-        details: formatData.error
-      });
+    if (!formatData.error) {
+      const outputText = formatData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (outputText) {
+        const parsedData = parseStructuredJSON(outputText);
+        parsedLeads = parsedData.leads || [];
+      }
+    } else {
+      console.warn("JSON formatting API error:", formatData.error);
     }
-
-    const outputText = formatData.candidates?.[0]?.content?.parts?.[0]?.text || '{"leads":[]}';
-    const parsedData = parseStructuredJSON(outputText);
-    
-    // Return the leads array directly, satisfying the frontend contract
-    return res.status(200).json(parsedData.leads || []);
-
-  } catch (error) {
-    console.error('Gemini Lead Finder structuring error:', error);
-    return res.status(500).json({ error: 'Internal server error', message: error.message });
+  } catch (jsonError) {
+    console.warn("JSON formatting failed, trying delimited text fallback...", jsonError);
   }
+
+  // 4. Delimited Text Fallback: If JSON parsing failed or was truncated,
+  // call Gemini to output a simple delimited text block and parse it.
+  if (!parsedLeads || parsedLeads.length === 0) {
+    console.log("Executing delimited text formatting fallback...");
+    try {
+      const delimitedPrompt = `You are an expert data parsing assistant.
+Analyze the following text describing local business leads:
+"${rawSearchContent}"
+
+Extract these businesses into a delimited text block. Use the exact labels below:
+LEAD_START
+NAME: contact person name (or "Owner" if not found)
+COMPANY: official name of the business
+EMAIL: contact email address (or standard placeholder info@domain.com if not found)
+PHONE: phone number
+SCORE: integer from 0 to 100 representing sales priority
+NOTES: description of their search optimization gaps
+LEAD_END
+
+Do NOT include any other text or explanation. Output strictly the delimited leads.`;
+
+      const requestBody = {
+        contents: [{
+          parts: [{
+            text: delimitedPrompt
+          }]
+        }],
+        generationConfig: {
+          maxOutputTokens: 1000,
+          temperature: 0.1
+        }
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        console.error("Delimited fallback failed:", data.error);
+        return res.status(502).json({
+          error: 'Gemini Formatting Error',
+          message: data.error.message || 'Failed to parse lead data.',
+          details: data.error
+        });
+      }
+
+      const outputText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      parsedLeads = parseDelimitedLeads(outputText);
+    } catch (err) {
+      console.error("Delimited fallback error:", err);
+      return res.status(500).json({ error: 'Internal server error', message: err.message });
+    }
+  }
+
+  return res.status(200).json(parsedLeads || []);
 }
