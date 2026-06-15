@@ -117,10 +117,47 @@ Locate 3 real businesses. Write down their contact person name (if you can find 
     console.warn("Primary search grounding error:", err);
   }
 
-  // 2. Fallback: If search grounding fails (due to key restrictions or billing),
-  // make a standard plain text call to generate mock realistic leads.
+  // 2. Secondary Attempt: If google_search fails (billing blocked), query OpenStreetMap Nominatim for real businesses
   if (!primarySuccess) {
-    console.log("Using fallback plain-text generation for leads...");
+    console.log("Primary search grounding failed. Using OpenStreetMap Nominatim fallback...");
+    try {
+      const osmUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(category + ' in ' + location)}&format=json&addressdetails=1&extratags=1&limit=10`;
+      const osmResponse = await fetch(osmUrl, {
+        headers: {
+          'User-Agent': 'OmniBizAI/1.0 (contact@omnibiz.ai)'
+        }
+      });
+      
+      if (osmResponse.ok) {
+        const osmData = await osmResponse.json();
+        if (osmData && osmData.length > 0) {
+          // Format OSM results into plain text for Gemini formatting
+          rawSearchContent = osmData.map((poi, idx) => {
+            const name = poi.name || poi.display_name.split(',')[0] || 'Local Business';
+            const address = poi.display_name || '';
+            const phone = poi.extratags?.phone || poi.extratags?.['contact:phone'] || '';
+            const website = poi.extratags?.website || '';
+            return `Business ${idx + 1}:
+Name: ${name}
+Address: ${address}
+Phone: ${phone}
+Website: ${website}`;
+          }).join('\n\n');
+          
+          if (rawSearchContent) {
+            primarySuccess = true;
+            console.log("Successfully retrieved real POIs from OpenStreetMap.");
+          }
+        }
+      }
+    } catch (osmErr) {
+      console.warn("OpenStreetMap query failed:", osmErr);
+    }
+  }
+
+  // 3. Tertiary Fallback: If both Google Search and OSM fail, generate mock realistic leads
+  if (!primarySuccess) {
+    console.log("Using mock plain-text generation fallback...");
     try {
       const fallbackRequestBody = {
         contents: [{
@@ -169,7 +206,7 @@ For each lead, provide:
     });
   }
 
-  // 3. Formatting Step: Try JSON Mode (without responseSchema to avoid truncation bugs)
+  // 4. Formatting Step: Try JSON Mode (without responseSchema to avoid truncation bugs)
   let parsedLeads = null;
   try {
     const formatRequestBody = {
@@ -198,7 +235,7 @@ The JSON output MUST match this structure:
 CRITICAL INSTRUCTIONS FOR JSON FORMATTING:
 - Ensure all string values are on a single line. Do NOT include literal newlines (\\n) or control characters inside any JSON string fields.
 - Do NOT use double quotes (\") inside any string fields (such as company names or notes). If a quote is needed, use single quotes (') instead.
-Format the output strictly according to this structure.`
+Format the output strictly according to the schema.`
         }]
       }],
       generationConfig: {
@@ -228,7 +265,7 @@ Format the output strictly according to this structure.`
     console.warn("JSON formatting failed, trying delimited text fallback...", jsonError);
   }
 
-  // 4. Delimited Text Fallback: If JSON parsing failed or was truncated,
+  // 5. Delimited Text Fallback: If JSON parsing failed or was truncated,
   // call Gemini to output a simple delimited text block and parse it.
   if (!parsedLeads || parsedLeads.length === 0) {
     console.log("Executing delimited text formatting fallback...");
