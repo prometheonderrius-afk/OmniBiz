@@ -51,6 +51,11 @@ export default function App() {
     location: '',
     targetAudience: '',
     goals: '',
+    ownerName: '',
+    ownerEmail: '',
+    ownerPhone: '',
+    employees: [],
+    themePreset: 'cyber_saas',
   });
 
   // Simulated Database States
@@ -72,6 +77,44 @@ export default function App() {
     });
     return unsubscribe;
   }, []);
+
+  // Dynamic Theme Preset Engine
+  useEffect(() => {
+    if (!businessData) return;
+    
+    // Determine preset: either the explicit preset chosen, or guessed one based on category
+    let presetKey = businessData.themePreset;
+    if (!presetKey && businessData.category) {
+      const cat = businessData.category.toLowerCase();
+      if (cat.includes('home services')) presetKey = 'rugged_services';
+      else if (cat.includes('retail')) presetKey = 'rose_boutique';
+      else if (cat.includes('restaurant')) presetKey = 'warm_cafe';
+      else if (cat.includes('professional')) presetKey = 'navy_corporate';
+      else if (cat.includes('health')) presetKey = 'ocean_wellness';
+      else presetKey = 'cyber_saas';
+    }
+
+    const presets = {
+      cyber_saas: { primary: '#8b5cf6', secondary: '#06b6d4', bg: '#0a0e1a' },
+      rugged_services: { primary: '#f97316', secondary: '#10b981', bg: '#0f172a' },
+      rose_boutique: { primary: '#ec4899', secondary: '#f472b6', bg: '#18122B' },
+      warm_cafe: { primary: '#d97706', secondary: '#fbbf24', bg: '#1c1917' },
+      ocean_wellness: { primary: '#10b981', secondary: '#06b6d4', bg: '#022c22' },
+      navy_corporate: { primary: '#2563eb', secondary: '#fbbf24', bg: '#0f172a' }
+    };
+
+    const activePreset = presets[presetKey] || presets.cyber_saas;
+
+    // Apply CSS Variables
+    document.documentElement.style.setProperty('--accent-purple', activePreset.primary);
+    document.documentElement.style.setProperty('--accent-purple-glow', `${activePreset.primary}33`);
+    document.documentElement.style.setProperty('--accent-cyan', activePreset.secondary);
+    document.documentElement.style.setProperty('--accent-cyan-glow', `${activePreset.secondary}33`);
+    document.documentElement.style.setProperty('--bg-dark', activePreset.bg);
+    
+    // Customize body background based on theme background
+    document.body.style.backgroundColor = activePreset.bg;
+  }, [businessData]);
 
   // Stripe Redirect Handler
   useEffect(() => {
@@ -263,7 +306,14 @@ export default function App() {
       savedHours: 12.5
     });
 
-    // 2. Seed default data for sandbox testing
+    // 2. Seed default data for sandbox testing (dynamic based on onboarding details)
+    const owner = data.ownerName || 'Owner';
+    const company = data.name || 'Your Business';
+    const cat = data.category || 'Home Services';
+    const loc = data.location || 'Roanoke, VA';
+    const firstEmp = data.employees && data.employees.length > 0 ? data.employees[0] : { name: 'Janet', role: 'Office Manager' };
+    const secondEmp = data.employees && data.employees.length > 1 ? data.employees[1] : { name: 'David', role: 'Lead Technician' };
+
     const seedCollection = async (colName, items) => {
       const colRef = collection(db, 'users', user.uid, colName);
       for (const item of items) {
@@ -271,31 +321,79 @@ export default function App() {
       }
     };
 
-    await seedCollection('leads', [
-      { name: 'Sarah Jenkins', company: 'Nexus Logistics', email: 'sjenkins@nexus.com', phone: '(555) 019-2834', score: 94, status: 'New', source: 'AI SEO Finder', notes: 'Interested in bulk packaging services.' },
-      { name: 'Marcus Brody', company: 'Brody Custom Carpentry', email: 'marcus@brodycc.com', phone: '(555) 120-9485', score: 88, status: 'Outreached', source: 'Google Maps Search', notes: 'Sent automated intro email. Looking for local branding partnership.' },
-      { name: 'Elena Rostova', company: 'Horizon Cafe & Bakery', email: 'elena@horizoncafe.net', phone: '(555) 234-8765', score: 72, status: 'New', source: 'Local Directories Scan', notes: 'Owner of a busy local coffee shop. High social presence.' }
-    ]);
+    // Leads generation tailored to business category
+    let customLeads = [];
+    if (cat.toLowerCase().includes('home')) {
+      customLeads = [
+        { name: 'Sarah Jenkins', company: 'Nexus Logistics Roanoke', email: 'sjenkins@nexusroanoke.com', phone: '(540) 555-0192', score: 94, status: 'New', source: 'AI SEO Finder', notes: 'Facility needs a full HVAC air quality inspection and maintenance contract.' },
+        { name: 'Marcus Brody', company: 'Brody Custom Carpentry', email: 'marcus@brodycc.com', phone: '(540) 555-0143', score: 88, status: 'Outreached', source: 'Google Maps Search', notes: `Needs general commercial repairs. Sent intro email signed by ${owner}.` },
+        { name: 'Elena Rostova', company: 'Horizon Cafe & Bakery', email: 'elena@horizoncafe.net', phone: '(540) 555-0187', score: 72, status: 'New', source: 'Local Directories Scan', notes: 'Busy coffee shop owner looking for a monthly kitchen plumbing inspector.' }
+      ];
+    } else if (cat.toLowerCase().includes('retail') || cat.toLowerCase().includes('boutique')) {
+      customLeads = [
+        { name: 'Chloe Sterling', company: 'The Velvet Hanger', email: 'chloe@velvethanger.com', phone: '(540) 555-0211', score: 92, status: 'New', source: 'AI SEO Finder', notes: `Local boutique looking for co-marketing and inventory visibility boost with ${company}.` },
+        { name: 'Julian Vance', company: 'Roanoke Antique Center', email: 'jvance@roanokeantique.com', phone: '(540) 555-0239', score: 84, status: 'New', source: 'Google Maps Search', notes: 'Lacks claimed Google Maps location. Good prospect for local citation campaign.' }
+      ];
+    } else {
+      customLeads = [
+        { name: 'Sarah Jenkins', company: 'Nexus Logistics', email: 'sjenkins@nexus.com', phone: '(555) 019-2834', score: 94, status: 'New', source: 'AI SEO Finder', notes: `Needs dynamic support for local branding. Target audience matches our profile.` },
+        { name: 'Marcus Brody', company: 'Brody Custom Carpentry', email: 'marcus@brodycc.com', phone: '(555) 120-9485', score: 88, status: 'Outreached', source: 'Google Maps Search', notes: `Sent automated intro email. Looking for local partnership.` }
+      ];
+    }
+
+    await seedCollection('leads', customLeads);
 
     await seedCollection('audits', [
-      { date: 'June 8, 2026', score: 68, status: 'Completed', issuesFound: 14, issuesFixed: 0 }
+      { date: 'June 16, 2026', score: 68, status: 'Completed', issuesFound: 12, issuesFixed: 0 }
     ]);
 
     await seedCollection('emails', [
-      { sender: 'Liam Neeson', email: 'liam@example.com', subject: 'Custom Quote Inquiry', body: 'Hi, do you provide customized service contracts? I need a detailed quote for my warehouse facility by tomorrow morning.', time: '10 mins ago', status: 'Pending Approval', draft: 'Hi Liam, yes, we customize our service contracts to fit warehouse specifications. Our AI has generated a draft proposal based on your needs. Let us schedule a brief 5-minute call at your convenience.' },
-      { sender: 'Clara Oswald', email: 'clara@example.com', subject: 'Business Hours Query', body: 'Are you open during the upcoming holiday weekend? I couldn\'t find details on your website.', time: '1 hour ago', status: 'Auto-Replied', draft: 'Hi Clara, thanks for reaching out! We are open from 9:00 AM to 3:00 PM during the holiday weekend. Let us know if you need anything else!' }
+      { 
+        sender: 'George Clooney', 
+        email: 'george@clooneyestates.com', 
+        subject: 'Service Inquiry', 
+        body: `Hi, I wanted to inquire if ${company} provides priority emergency packages for local properties. Please send a rate sheet.`, 
+        time: '10 mins ago', 
+        status: 'Pending Approval', 
+        draft: `Hi George, thanks for contacting ${company}! Yes, we have priority support packages custom-tailored for local properties in ${loc}. I've CC'd our ${firstEmp.role}, ${firstEmp.name}, to coordinate the rate sheet for you. Best regards, ${owner}.` 
+      },
+      { 
+        sender: 'Clara Oswald', 
+        email: 'clara@oswaldtech.com', 
+        subject: 'Holiday Hours?', 
+        body: `Are your office hours normal this upcoming weekend? Couldn't find it listed.`, 
+        time: '1 hour ago', 
+        status: 'Auto-Replied', 
+        draft: `Hi Clara, thanks for reaching out to ${company}! Yes, we are operating standard hours. Let us know if you need to schedule anything with ${secondEmp.name} or the team. Thanks, ${owner}!` 
+      }
     ]);
 
     await seedCollection('reviews', [
-      { author: 'David Beckham', rating: 5, comment: 'Fantastic service! On time and very professional. The automation saves so much hassle.', source: 'Google Maps', time: '1 day ago', status: 'Pending Review', replyDraft: 'Thank you so much for the 5-star review, David! We are thrilled to hear that our service and automation are saving you time. We look forward to working with you again!' },
-      { author: 'Janet Jackson', rating: 3, comment: 'Good quality overall, but booking setup felt a bit complex.', source: 'Yelp', time: '2 days ago', status: 'Replied', replyDraft: 'Hi Janet, thank you for your feedback. We are constantly improving our booking system to make it simpler. We appreciate your input and hope to serve you better next time.' }
+      { 
+        author: 'David Beckham', 
+        rating: 5, 
+        comment: `Fantastic service from ${company}! ${secondEmp.name} was incredibly professional and resolved our issue in under an hour. Highly recommend!`, 
+        source: 'Google Maps', 
+        time: '1 day ago', 
+        status: 'Pending Review', 
+        replyDraft: `Thank you so much for the 5-star review, David! We are thrilled to hear that ${secondEmp.name} provided excellent service. We appreciate your support! - ${owner}` 
+      },
+      { 
+        author: 'Janet Jackson', 
+        rating: 4, 
+        comment: `Great response time from the team. Booking through ${company} was relatively straightforward.`, 
+        source: 'Yelp', 
+        time: '2 days ago', 
+        status: 'Replied', 
+        replyDraft: `Hi Janet, thank you for your feedback! We are constantly working with ${firstEmp.name} and the staff to make our scheduling experience even simpler. We look forward to serving you again!` 
+      }
     ]);
 
     await seedCollection('smsLog', [
-      { sender: 'Client', text: 'Missed Call: Triggered Callback Agent.', isUser: false },
-      { sender: 'OmniBiz AI', text: 'Hi! Sorry we missed your call. We\'re currently assisting another client. How can we help you today?', isUser: true },
-      { sender: 'Client', text: 'Hey, I wanted to ask if you have availability for an on-site audit this Thursday afternoon?', isUser: false },
-      { sender: 'OmniBiz AI (Draft)', text: 'We do have an open slot this Thursday at 2:00 PM. Would you like me to book that for you?', isUser: true, isDraft: true }
+      { sender: 'Client', text: `Missed Call: Triggered Callback Agent for ${company}.`, isUser: false },
+      { sender: 'OmniBiz AI', text: `Hi! Sorry we missed your call. We're currently assisting another client. How can we help you today?`, isUser: true },
+      { sender: 'Client', text: 'Hey, I wanted to ask if you have availability for a consultation this Thursday afternoon?', isUser: false },
+      { sender: 'OmniBiz AI (Draft)', text: `We do have an open slot this Thursday at 2:00 PM. Would you like me to book that for you? I can assign ${secondEmp.name} to your request.`, isUser: true, isDraft: true }
     ]);
 
     await seedCollection('campaigns', [
@@ -303,11 +401,11 @@ export default function App() {
     ]);
 
     await seedCollection('contracts', [
-      { name: 'Service Level Agreement', type: 'SLA', client: 'Vance Refrigeration', date: 'June 05, 2026', status: 'Signed' }
+      { name: `${company} Service Agreement`, type: 'SLA', client: 'Vance Refrigeration', date: 'June 16, 2026', status: 'Signed' }
     ]);
 
     await seedCollection('notifications', [
-      { text: `AI Onboarding complete for ${data.name}! Initial audit scheduled.`, type: "system", time: "Just now" }
+      { text: `AI Dynamic Onboarding complete for ${company}! Layout style preset "${data.themePreset}" built.`, type: "system", time: "Just now" }
     ]);
   };
 

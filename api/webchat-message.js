@@ -44,7 +44,12 @@ export default async function handler(req, res) {
         name: bFields.name?.stringValue || '',
         category: bFields.category?.stringValue || 'Local Business',
         location: bFields.location?.stringValue || '',
-        goals: bFields.goals?.stringValue || ''
+        goals: bFields.goals?.stringValue || '',
+        ownerName: bFields.ownerName?.stringValue || 'Owner',
+        employees: bFields.employees?.arrayValue?.values?.map(v => ({
+          name: v.mapValue?.fields?.name?.stringValue || '',
+          role: v.mapValue?.fields?.role?.stringValue || ''
+        })) || []
       };
     }
 
@@ -90,6 +95,8 @@ export default async function handler(req, res) {
               parts: [{
                 text: `You are OmniBiz AI, an automated live-chat customer assistant for the business "${businessData.name || 'our company'}" (Category: "${businessData.category || 'Local Business'}").
 Your business is located in: "${businessData.location || 'our service area'}".
+Business Owner Name: "${businessData.ownerName || 'Owner'}".
+Business Staff Members: ${businessData.employees?.map(e => `${e.name} (${e.role})`).join(', ') || 'none'}.
 Business Goals/Details: "${businessData.goals || 'provide top quality services'}".
 
 The visitor just typed: "${text}".

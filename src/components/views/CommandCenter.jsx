@@ -14,23 +14,32 @@ export default function CommandCenter({
   setSmsLog,
   isFeatureLocked
 }) {
-  
+  const owner = businessData.ownerName || 'Owner';
+  const company = businessData.name || 'Your Business';
+  const cat = businessData.category || 'Home Services';
+  const loc = businessData.location || 'Roanoke, VA';
+  const target = businessData.targetAudience || 'local customers';
+  const firstEmp = businessData.employees && businessData.employees.length > 0 ? businessData.employees[0] : { name: 'Janet', role: 'Office Manager' };
+  const secondEmp = businessData.employees && businessData.employees.length > 1 ? businessData.employees[1] : { name: 'David', role: 'Lead Technician' };
+
   // Quick Actions Simulation Triggers
   const simulateIncomingCall = () => {
     // Append to SMS logs
     setSmsLog(prev => [
       ...prev,
-      { id: Date.now() + 1, sender: 'Client', text: `📞 Incoming call from (555) 304-${Math.floor(1000 + Math.random() * 9000)}`, time: 'Just now', isUser: false },
-      { id: Date.now() + 2, sender: 'OmniBiz AI (Auto)', text: 'Hi! Sorry we missed your call. We\'re currently assisting another client. How can we help you today?', time: 'Just now', isUser: true },
+      { id: Date.now() + 1, sender: 'Client', text: `📞 Incoming call from (540) 555-0${Math.floor(100 + Math.random() * 900)}`, time: 'Just now', isUser: false },
+      { id: Date.now() + 2, sender: 'OmniBiz AI (Auto)', text: `Hi! Sorry we missed your call at ${company}. We're currently assisting another client. How can we help you today?`, time: 'Just now', isUser: true },
+      { id: Date.now() + 3, sender: 'Client', text: 'Hey, I wanted to ask if you have availability for a service consultation this Thursday?', isUser: false },
+      { id: Date.now() + 4, sender: 'OmniBiz AI (Draft)', text: `Yes, we have availability! I can book you in with our ${secondEmp.role}, ${secondEmp.name}, at 2:00 PM. Would that work?`, isUser: true, isDraft: true }
     ]);
     setSavedHours(prev => prev + 0.5);
-    addNotification("Missed Call: Automated SMS textback response sent to caller.", "callback");
+    addNotification(`Missed Call Callback: Simulated automated response routing for ${company}.`, "callback");
   };
 
   const simulateIncomingEmail = () => {
     const questions = [
-      { sender: 'George Clooney', subject: 'Service Rates', body: 'Hello, I want to inquire about your hourly rates for weekend emergency visits. Do you have a premium charge?' },
-      { sender: 'Oprah Winfrey', subject: 'Collaboration request', body: 'Hi, I would love to get a consultation session regarding local marketing strategies for my new charity venue.' }
+      { sender: 'George Clooney', subject: 'Service Inquiry', body: `Hi, does ${company} provide priority emergency packages for local properties in ${loc}? Please send a rate sheet.` },
+      { sender: 'Oprah Winfrey', subject: 'Urgent Consultation', body: `Hello, we need a specialist from ${company} to consult on our operations next Tuesday. Who handles scheduling?` }
     ];
     const pick = questions[Math.floor(Math.random() * questions.length)];
     
@@ -42,7 +51,7 @@ export default function CommandCenter({
         body: pick.body,
         time: 'Just now',
         status: 'Pending Approval',
-        draft: `Hi ${pick.sender.split(' ')[0]}, thank you for reaching out! Our standard pricing structure is automated in our database. We have prepared a draft breakdown for your review. Would you like to schedule a 10-minute setup consultation?`
+        draft: `Hi ${pick.sender.split(' ')[0]}, thanks for contacting ${company}! Yes, we have priority support packages custom-tailored for local properties in ${loc}. I've CC'd our ${firstEmp.role}, ${firstEmp.name}, to coordinate the rate sheet for you. Best regards, ${owner}.`
       },
       ...prev
     ]);
@@ -52,8 +61,8 @@ export default function CommandCenter({
 
   const simulateNewReview = () => {
     const reviewers = [
-      { author: 'Brad Pitt', rating: 5, comment: 'Hands down the best service experience I have had all year. Simple, fast, and fully automated!' },
-      { author: 'Tom Cruise', rating: 4, comment: 'Quality work and nice automated invoice delivery. Took slightly longer than expected but very professional.' }
+      { author: 'Brad Pitt', rating: 5, comment: `Absolute lifesavers! We called ${company} and ${secondEmp.name} solved our issue within an hour. Excellent response time!` },
+      { author: 'Tom Cruise', rating: 4, comment: `Great professional service from the team at ${company}. Met all our requirements nicely.` }
     ];
     const pick = reviewers[Math.floor(Math.random() * reviewers.length)];
 
@@ -66,7 +75,7 @@ export default function CommandCenter({
         source: 'Google Maps',
         time: 'Just now',
         status: 'Pending Review',
-        replyDraft: `Thank you for the review, ${pick.author}! We appreciate your support and feedback. Our team is constantly optimizing our processes to be even faster next time.`
+        replyDraft: `Thank you for the review, ${pick.author}! We appreciate your support. We're glad ${secondEmp.name} did a great job for you! - ${owner}`
       },
       ...prev
     ]);
@@ -100,6 +109,64 @@ export default function CommandCenter({
         <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', maxWidth: '600px' }}>
           Your AI business co-pilot is active. We are currently managing online rankings, capturing leads, and draft-replying to incoming communications.
         </p>
+      </div>
+
+      {/* AI Co-Pilot Identity Matrix */}
+      <div className="glass-card" style={{
+        background: 'rgba(15, 22, 42, 0.35)',
+        border: '1px solid var(--border-glass)',
+        padding: '24px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+          <div>
+            <h3 style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="animate-pulse-glow" style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-purple)', display: 'inline-block' }}></span>
+              Self-Building AI Persona Directives
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>
+              Dynamic system prompts and delegation protocols tailors themselves based on your profile and team.
+            </p>
+          </div>
+          <span className="badge badge-purple" style={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Dynamic Persona Active</span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px' }}>
+          {/* Rules / Prompts */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <h4 style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>🤖 AI Co-Pilot Directives</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              <div style={{ background: 'rgba(0,0,0,0.15)', padding: '10px', borderRadius: '6px', borderLeft: '3px solid var(--accent-purple)' }}>
+                <strong>Business Context:</strong> Respond on behalf of <em>{company}</em> (Category: <em>{cat}</em>) in <em>{loc}</em>.
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.15)', padding: '10px', borderRadius: '6px', borderLeft: '3px solid var(--accent-purple)' }}>
+                <strong>Clientele Target:</strong> Customize marketing copy & SMS/reviews to target: <em>{target}</em>.
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.15)', padding: '10px', borderRadius: '6px', borderLeft: '3px solid var(--accent-purple)' }}>
+                <strong>Delegation Protocol:</strong> Draft emails signed off as <strong>{owner} (Owner)</strong>. For bookings, delegate directly to active staff: <strong>{businessData.employees?.map(e => `${e.name} (${e.role})`).join(', ') || 'No staff added'}</strong>.
+              </div>
+            </div>
+          </div>
+
+          {/* Staff Directory */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderLeft: '1px solid var(--border-glass)', paddingLeft: '24px' }}>
+            <h4 style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>👥 Configured Staff Directory</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '160px', overflowY: 'auto' }}>
+              {businessData.employees && businessData.employees.length > 0 ? (
+                businessData.employees.map((emp, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.8rem' }}>
+                    <span style={{ fontWeight: '600' }}>{emp.name}</span>
+                    <span style={{ color: 'var(--accent-cyan)', background: 'var(--accent-cyan-glow)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem' }}>{emp.role}</span>
+                  </div>
+                ))
+              ) : (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '16px' }}>No staff members configured. Go to settings to add your team.</div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* KPI Stats Grid */}
