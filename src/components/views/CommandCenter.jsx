@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function CommandCenter({
   businessData,
@@ -12,7 +12,8 @@ export default function CommandCenter({
   setEmails,
   setReviews,
   setSmsLog,
-  isFeatureLocked
+  isFeatureLocked,
+  userId
 }) {
   const owner = businessData.ownerName || 'Owner';
   const company = businessData.name || 'Your Business';
@@ -22,8 +23,11 @@ export default function CommandCenter({
   const firstEmp = businessData.employees && businessData.employees.length > 0 ? businessData.employees[0] : { name: 'Janet', role: 'Office Manager' };
   const secondEmp = businessData.employees && businessData.employees.length > 1 ? businessData.employees[1] : { name: 'David', role: 'Lead Technician' };
 
+  const [sendLiveSms, setSendLiveSms] = useState(false);
+  const [testMobileNumber, setTestMobileNumber] = useState(businessData.ownerPhone || '');
+
   // Quick Actions Simulation Triggers
-  const simulateIncomingCall = () => {
+  const simulateIncomingCall = async () => {
     // Append to SMS logs
     setSmsLog(prev => [
       ...prev,
@@ -34,6 +38,31 @@ export default function CommandCenter({
     ]);
     setSavedHours(prev => prev + 0.5);
     addNotification(`Missed Call Callback: Simulated automated response routing for ${company}.`, "callback");
+
+    // Live Text dispatcher
+    if (sendLiveSms && testMobileNumber) {
+      try {
+        const textBody = `Hi there! Sorry we missed your call at ${company}. This is ${owner}'s AI co-pilot. How can we help you with ${cat} today?`;
+        const smsRes = await fetch('/api/send-sms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: userId,
+            to: testMobileNumber,
+            body: textBody
+          })
+        });
+        const smsData = await smsRes.json();
+        if (smsRes.ok && smsData.success) {
+          alert(`Success! Real-time SMS textback sent to ${testMobileNumber} via Twilio.`);
+        } else {
+          alert(`Twilio Error: ${smsData.error || smsData.message || 'Check your Twilio settings.'}`);
+        }
+      } catch (err) {
+        console.error("Failed to send live test SMS:", err);
+        alert(`Failed to send Live SMS: ${err.message}`);
+      }
+    }
   };
 
   const simulateIncomingEmail = () => {
@@ -288,6 +317,47 @@ export default function CommandCenter({
                 Simulate Review
               </button>
             </div>
+
+            {/* Live Twilio Testing Checkbox */}
+            {businessData.twilioApiKeySid && (
+              <div style={{ 
+                background: 'rgba(139, 92, 246, 0.03)', 
+                border: '1px dashed rgba(139, 92, 246, 0.2)', 
+                padding: '16px', 
+                borderRadius: '8px', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '12px', 
+                marginTop: '8px',
+                fontSize: '0.8rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input 
+                    type="checkbox" 
+                    id="sendLiveSms"
+                    checked={sendLiveSms} 
+                    onChange={e => setSendLiveSms(e.target.checked)} 
+                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="sendLiveSms" style={{ fontWeight: '600', cursor: 'pointer', color: 'var(--text-primary)' }}>
+                    Send live SMS to my phone on missed call simulation 📱
+                  </label>
+                </div>
+                {sendLiveSms && (
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Test Mobile Number:</span>
+                    <input 
+                      type="text" 
+                      className="glass-input" 
+                      placeholder="e.g. +15405550199" 
+                      value={testMobileNumber} 
+                      onChange={e => setTestMobileNumber(e.target.value)} 
+                      style={{ fontSize: '0.75rem', padding: '6px 10px', width: '160px', background: 'rgba(0,0,0,0.2)' }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

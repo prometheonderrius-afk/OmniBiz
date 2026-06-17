@@ -25,6 +25,7 @@ import AutomationSuite from './components/views/AutomationSuite';
 import AdManager from './components/views/AdManager';
 import ContractManager from './components/views/ContractManager';
 import BillingManager from './components/views/BillingManager';
+import SettingsManager from './components/views/SettingsManager';
 
 export default function App() {
   // Auth State
@@ -533,6 +534,7 @@ export default function App() {
               return (
                 <CommandCenter
                   businessData={businessData}
+                  userId={user.uid}
                   savedHours={savedHours}
                   setSavedHours={async (hours) => {
                     setSavedHours(hours);
@@ -707,6 +709,14 @@ export default function App() {
                     setSelectedTier(tier);
                     await updateDoc(doc(db, 'users', user.uid), { selectedTier: tier });
                   }}
+                  addNotification={addNotification}
+                />
+              );
+            case 'settings':
+              return (
+                <SettingsManager
+                  businessData={businessData}
+                  userId={user.uid}
                   addNotification={addNotification}
                 />
               );
