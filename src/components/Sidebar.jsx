@@ -129,7 +129,7 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
         </nav>
       </div>
 
-      {/* Subscription Simulator Footer */}
+      {/* Subscription Status Footer */}
       <div style={{ 
         marginTop: 'auto', 
         paddingTop: '20px', 
@@ -139,32 +139,10 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
         gap: '12px'
       }}>
         <div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>SIMULATION TIER:</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>CURRENT PLAN:</div>
           <span className={`badge ${getTierBadgeClass(selectedTier)}`} style={{ textTransform: 'uppercase', fontSize: '0.7rem', width: '100%', justifyContent: 'center' }}>
             {selectedTier} plan
           </span>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Quick Toggle Tier:</label>
-          <select
-            className="glass-input"
-            value={selectedTier}
-            onChange={(e) => {
-              setSelectedTier(e.target.value);
-            }}
-            style={{ 
-              fontSize: '0.75rem', 
-              padding: '6px 8px', 
-              background: 'rgba(0,0,0,0.3)',
-              borderRadius: '4px' 
-            }}
-          >
-            <option value="free" style={{ background: '#0a0e1a' }}>Free Tier</option>
-            <option value="starter" style={{ background: '#0a0e1a' }}>Starter ($49)</option>
-            <option value="pro" style={{ background: '#0a0e1a' }}>Professional ($149)</option>
-            <option value="enterprise" style={{ background: '#0a0e1a' }}>Enterprise ($299)</option>
-          </select>
         </div>
       </div>
     </aside>
