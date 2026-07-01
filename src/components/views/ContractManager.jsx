@@ -63,12 +63,34 @@ Neither party shall disclose, copy, or distribute confidential records, client p
     }
 
     setAssembling(true);
-    setTimeout(() => {
-      setAssembledDoc(getContractBody());
-      setAssembling(false);
-      setSavedHours(prev => prev + 0.9);
-      addNotification(`Legal Contract: Successfully drafted ${template} for ${clientName}.`, "system");
-    }, 1500);
+    fetch('/api/generate-contract', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        template,
+        clientName,
+        businessData
+      })
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('API request failed');
+        return res.json();
+      })
+      .then(data => {
+        setAssembledDoc(data.contractText);
+        setSavedHours(prev => prev + 0.9);
+        addNotification(`Legal Contract: Successfully drafted ${template} for ${clientName}.`, "system");
+      })
+      .catch(err => {
+        console.error("Contract assembly failed, using local fallback:", err);
+        setAssembledDoc(getContractBody());
+        addNotification(`Legal Contract (Local Fallback): Drafted ${template} for ${clientName}.`, "system");
+      })
+      .finally(() => {
+        setAssembling(false);
+      });
   };
 
   const handleSignContract = () => {

@@ -21,6 +21,8 @@ import Sidebar from './components/Sidebar';
 import CommandCenter from './components/views/CommandCenter';
 import SEOManager from './components/views/SEOManager';
 import LeadGen from './components/views/LeadGen';
+import AgencyDashboard from './components/views/AgencyDashboard';
+import CompetitorAnalysis from './components/views/CompetitorAnalysis';
 import AutomationSuite from './components/views/AutomationSuite';
 import AdManager from './components/views/AdManager';
 import ContractManager from './components/views/ContractManager';
@@ -35,6 +37,7 @@ export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [portalMode, setPortalMode] = useState(null);
 
   // Global Config States
   const [onboardingComplete, setOnboardingComplete] = useState(false);
@@ -496,6 +499,53 @@ export default function App() {
     );
   }
 
+  // Portal Selection Screen
+  if (user && !portalMode) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px' }}>
+        <div className="glass-card animate-fade-in" style={{ maxWidth: '600px', width: '100%', padding: '32px', textAlign: 'center' }}>
+          <h2 style={{ fontSize: '1.8rem', marginBottom: '12px' }}>Select Portal Access</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>Welcome back. Which environment do you want to access?</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div 
+              className="glass-card" 
+              style={{ padding: '24px', cursor: 'pointer', border: '1px solid var(--accent-purple)' }}
+              onClick={() => setPortalMode('ADMIN')}
+            >
+              <h3>Agency Admin</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Manage clients & generate leads</p>
+            </div>
+            <div 
+              className="glass-card" 
+              style={{ padding: '24px', cursor: 'pointer', border: '1px solid var(--accent-cyan)' }}
+              onClick={() => setPortalMode('CLIENT')}
+            >
+              <h3>Client Suite</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>The self-building product view</p>
+            </div>
+          </div>
+          <button className="glass-button glass-button-secondary" onClick={handleSignOut} style={{ marginTop: '32px' }}>Sign Out</button>
+        </div>
+      </div>
+    );
+  }
+
+  // Agency Admin Mode
+  if (portalMode === 'ADMIN') {
+    return (
+      <AgencyDashboard 
+        leads={leads}
+        setLeads={setLeads}
+        businessData={businessData}
+        savedHours={savedHours}
+        setSavedHours={setSavedHours}
+        addNotification={addNotification}
+        selectedTier={selectedTier}
+        handleSignOut={handleSignOut}
+      />
+    );
+  }
+
   // Onboarding Screen
   if (!onboardingComplete) {
     return <Onboarding onComplete={handleOnboardingComplete} />;
@@ -592,24 +642,10 @@ export default function App() {
                   selectedTier={selectedTier}
                 />
               );
-            case 'leads':
+            case 'competitors':
               return (
-                <LeadGen
-                  leads={leads}
-                  setLeads={async (leadsSetter) => {
-                    const newLeads = typeof leadsSetter === 'function' ? leadsSetter(leads) : leadsSetter;
-                    for (const lItem of newLeads) {
-                      const lDocRef = doc(db, 'users', user.uid, 'leads', lItem.id.toString());
-                      await setDoc(lDocRef, { ...lItem, createdAt: Date.now() });
-                    }
-                  }}
+                <CompetitorAnalysis
                   businessData={businessData}
-                  savedHours={savedHours}
-                  setSavedHours={async (hours) => {
-                    setSavedHours(hours);
-                    await updateDoc(doc(db, 'users', user.uid), { savedHours: hours });
-                  }}
-                  addNotification={addNotification}
                   isFeatureLocked={isFeatureLocked}
                   selectedTier={selectedTier}
                 />

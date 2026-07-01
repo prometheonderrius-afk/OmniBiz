@@ -18,18 +18,41 @@ export default function AdManager({
 
   const triggerAdGeneration = () => {
     setGenerating(true);
-    setTimeout(() => {
-      setGeneratedAd({
-        headline1: `${businessData.name || 'Quality Service'} | Rated #1 Local Service`,
-        headline2: `Fast, Reliable & Professional - Call Now`,
-        description: `Struggling with ${businessData.category.split(' ')[0]} issues? Get same-day service from ${businessData.name || 'our team'}. Booking is fully automated. Serving the local community. Click to get a free estimate!`,
-        keywords: `${businessData.category.split(' ')[0]} repair, best ${businessData.category.split(' ')[0]}, local services, emergency services`,
-        demographics: `Age: 25-65+ | Location: ${businessData.location || 'Local area'} (25 mile radius)`
+    fetch('/api/generate-ad', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        businessData,
+        platform,
+        budget,
+        objective
+      })
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('API request failed');
+        return res.json();
+      })
+      .then(data => {
+        setGeneratedAd(data);
+        setSavedHours(prev => prev + 1.2);
+        addNotification(`Ad Campaign Assets: Successfully generated for ${platform}.`, "ad");
+      })
+      .catch(err => {
+        console.error("Ad generation failed, using local fallback:", err);
+        setGeneratedAd({
+          headline1: `${businessData.name || 'Quality Service'} | Rated #1 Local Service`,
+          headline2: `Fast, Reliable & Professional - Call Now`,
+          description: `Struggling with ${businessData.category?.split(' ')[0] || 'service'} issues? Get same-day service from ${businessData.name || 'our team'}. Booking is fully automated. Serving the local community. Click to get a free estimate!`,
+          keywords: `${businessData.category?.split(' ')[0] || 'service'} repair, best ${businessData.category?.split(' ')[0] || 'service'}, local services, emergency services`,
+          demographics: `Age: 25-65+ | Location: ${businessData.location || 'Local area'} (25 mile radius)`
+        });
+        addNotification(`Ad Campaign Assets (Local Fallback): Generated for ${platform}.`, "ad");
+      })
+      .finally(() => {
+        setGenerating(false);
       });
-      setGenerating(false);
-      setSavedHours(prev => prev + 1.2);
-      addNotification(`Ad Campaign Assets: Successfully generated for ${platform}.`, "ad");
-    }, 1800);
   };
 
   const handleLaunchCampaign = () => {

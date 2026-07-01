@@ -1,0 +1,170 @@
+{
+  "tables": [
+    {
+      "name": "clients",
+      "description": "Stores contact details of lawn care and landscaping clients.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "constraints": "PRIMARY KEY AUTOINCREMENT"
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "constraints": "NOT NULL"
+        },
+        {
+          "name": "phone",
+          "type": "TEXT",
+          "constraints": null
+        },
+        {
+          "name": "address",
+          "type": "TEXT",
+          "constraints": null
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "constraints": "DEFAULT 'Active'"
+        }
+      ],
+      "sample_records": [
+        {
+          "id": 1,
+          "name": "Sarah Jenkins",
+          "phone": "555-0199",
+          "address": "124 Maple Ave",
+          "status": "Active"
+        },
+        {
+          "id": 2,
+          "name": "Robert Miller",
+          "phone": "555-3829",
+          "address": "89 Pine Rd",
+          "status": "Active"
+        },
+        {
+          "id": 3,
+          "name": "Oakridge HOA",
+          "phone": "555-8811",
+          "address": "400 Oakridge Blvd",
+          "status": "Active"
+        }
+      ]
+    },
+    {
+      "name": "jobs",
+      "description": "Tracks landscaping jobs, schedules, prices, and status.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "constraints": "PRIMARY KEY AUTOINCREMENT"
+        },
+        {
+          "name": "client_id",
+          "type": "INTEGER",
+          "constraints": "REFERENCES clients(id)"
+        },
+        {
+          "name": "service_type",
+          "type": "TEXT",
+          "constraints": null
+        },
+        {
+          "name": "scheduled_date",
+          "type": "TEXT",
+          "constraints": null
+        },
+        {
+          "name": "price",
+          "type": "REAL",
+          "constraints": null
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "constraints": null
+        }
+      ],
+      "sample_records": [
+        {
+          "id": 1,
+          "client_id": 1,
+          "service_type": "Mowing & Edging",
+          "scheduled_date": "2026-06-18",
+          "price": 65.0,
+          "status": "Scheduled"
+        },
+        {
+          "id": 2,
+          "client_id": 2,
+          "service_type": "Mulching & Weed Control",
+          "scheduled_date": "2026-06-19",
+          "price": 250.0,
+          "status": "Scheduled"
+        },
+        {
+          "id": 3,
+          "client_id": 3,
+          "service_type": "Tree Trimming",
+          "scheduled_date": "2026-06-15",
+          "price": 450.0,
+          "status": "Completed"
+        }
+      ]
+    },
+    {
+      "name": "crew_assignments",
+      "description": "Assigns working crews to scheduled jobs.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "constraints": "PRIMARY KEY AUTOINCREMENT"
+        },
+        {
+          "name": "job_id",
+          "type": "INTEGER",
+          "constraints": "REFERENCES jobs(id)"
+        },
+        {
+          "name": "crew_name",
+          "type": "TEXT",
+          "constraints": null
+        },
+        {
+          "name": "lead_worker",
+          "type": "TEXT",
+          "constraints": null
+        }
+      ],
+      "sample_records": [
+        {
+          "id": 1,
+          "job_id": 1,
+          "crew_name": "East Crew",
+          "lead_worker": "Carlos Santana"
+        },
+        {
+          "id": 2,
+          "job_id": 2,
+          "crew_name": "West Crew",
+          "lead_worker": "Jake Gyllenhaal"
+        },
+        {
+          "id": 3,
+          "job_id": 3,
+          "crew_name": "Tree Crew",
+          "lead_worker": "Bruce Willis"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    "jobs.client_id -> clients.id",
+    "crew_assignments.job_id -> jobs.id"
+  ]
+}
