@@ -120,25 +120,31 @@ export default function ShowcaseRecorder({ onClose }) {
   };
 
   const playTTS = async (text) => {
-    if (apiKey) {
-      try {
-        const res = await fetch('https://api.openai.com/v1/audio/speech', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model: "tts-1", input: text, voice: "alloy" })
-        });
-        const arrayBuffer = await res.arrayBuffer();
-        const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
-        
-        const source = audioContextRef.current.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(destRef.current);
-        source.connect(audioContextRef.current.destination);
-        source.start(0);
-      } catch (err) {
-        console.error("TTS Error:", err);
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      
+      if (!res.ok) throw new Error("TTS API failed");
+
+      const arrayBuffer = await res.arrayBuffer();
+      
+      // Ensure AudioContext is running before decoding/playing
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
       }
-    } else {
+      
+      const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+      
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(destRef.current);
+      source.connect(audioContextRef.current.destination);
+      source.start(0);
+    } catch (err) {
+      console.warn("Falling back to SpeechSynthesis due to TTS Error:", err);
       const utterance = new SpeechSynthesisUtterance(text);
       window.speechSynthesis.speak(utterance);
     }
@@ -153,29 +159,34 @@ export default function ShowcaseRecorder({ onClose }) {
       if (!mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') break; // User stopped early
 
       setStatus(`AutoPilot: ${step.action}`);
+      console.log("AutoPilot Step:", step);
       
-      switch (step.action) {
-        case "wait":
-          await new Promise(r => setTimeout(r, step.duration));
-          break;
-        case "move":
-          if (cursorRef.current) cursorRef.current.moveToElement(step.target);
-          break;
-        case "click":
-          if (cursorRef.current) cursorRef.current.click();
-          break;
-        case "speak":
-          playTTS(step.text);
-          break;
-        case "showBackend":
-          setShowBackend(true);
-          break;
-        case "hideBackend":
-          setShowBackend(false);
-          break;
-        case "stop":
-          handleStopRecording();
-          break;
+      try {
+        switch (step.action) {
+          case "wait":
+            await new Promise(r => setTimeout(r, step.duration));
+            break;
+          case "move":
+            if (cursorRef.current) cursorRef.current.moveToElement(step.target);
+            break;
+          case "click":
+            if (cursorRef.current) cursorRef.current.click();
+            break;
+          case "speak":
+            playTTS(step.text); // Fire and forget (don't await) so it doesn't block
+            break;
+          case "showBackend":
+            setShowBackend(true);
+            break;
+          case "hideBackend":
+            setShowBackend(false);
+            break;
+          case "stop":
+            handleStopRecording();
+            break;
+        }
+      } catch (err) {
+        console.error("AutoPilot Error during step", step, err);
       }
     }
   };

@@ -22,7 +22,16 @@ const PhantomCursor = forwardRef((props, ref) => {
       if (element) {
         // Find closest button or clickable element if the exact point is an SVG or inner span
         const clickable = element.closest('button, a, [role="button"]') || element;
-        clickable.click();
+        try {
+          if (typeof clickable.click === 'function') {
+            clickable.click();
+          } else {
+            // Fallback for SVG elements that might not have .click() in all browsers
+            clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+          }
+        } catch (err) {
+          console.warn("PhantomCursor failed to click:", err);
+        }
       }
     },
     moveToElement: (selector) => {
