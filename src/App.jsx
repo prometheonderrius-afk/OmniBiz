@@ -149,6 +149,15 @@ export default function App() {
     }
   }, [user]);
 
+  // Admin Portal Auto-Router
+  useEffect(() => {
+    if (user && !portalMode) {
+      if (user.email !== 'prometheonderrius@gmail.com') {
+        setPortalMode('CLIENT');
+      }
+    }
+  }, [user, portalMode]);
+
   // Firestore Data Synchronizer
   useEffect(() => {
     if (!user) return;
@@ -501,6 +510,14 @@ export default function App() {
 
   // Portal Selection Screen
   if (user && !portalMode) {
+    if (user.email !== 'prometheonderrius@gmail.com') {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg-dark)' }}>
+          <div className="animate-spin-fast" style={{ width: '40px', height: '40px', border: '4px solid transparent', borderTopColor: 'var(--accent-cyan)', borderRadius: '50%' }}></div>
+        </div>
+      );
+    }
+
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px' }}>
         <div className="glass-card animate-fade-in" style={{ maxWidth: '600px', width: '100%', padding: '32px', textAlign: 'center' }}>
