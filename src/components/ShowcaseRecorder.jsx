@@ -136,20 +136,20 @@ export default function ShowcaseRecorder({ onClose }) {
       
       if (!res.ok) throw new Error("TTS API failed");
 
-      const arrayBuffer = await res.arrayBuffer();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audioEl = new Audio(url);
       
-      // Ensure AudioContext is running before decoding/playing
+      // Ensure AudioContext is running before playing
       if (audioContextRef.current.state === 'suspended') {
         await audioContextRef.current.resume();
       }
       
-      const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
-      
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBuffer;
+      const source = audioContextRef.current.createMediaElementSource(audioEl);
       source.connect(destRef.current);
       source.connect(audioContextRef.current.destination);
-      source.start(0);
+      
+      await audioEl.play();
     } catch (err) {
       console.warn("Falling back to SpeechSynthesis due to TTS Error:", err);
       const utterance = new SpeechSynthesisUtterance(text);
