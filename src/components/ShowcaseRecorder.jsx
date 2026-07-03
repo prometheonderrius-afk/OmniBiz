@@ -151,9 +151,7 @@ export default function ShowcaseRecorder({ onClose }) {
       
       await audioEl.play();
     } catch (err) {
-      console.warn("Falling back to SpeechSynthesis due to TTS Error:", err);
-      const utterance = new SpeechSynthesisUtterance(text);
-      window.speechSynthesis.speak(utterance);
+      console.error("TTS Error:", err);
     }
   };
 
