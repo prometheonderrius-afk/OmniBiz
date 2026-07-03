@@ -8,44 +8,55 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing text' });
   }
 
-  // Obfuscated ElevenLabs key to bypass GitHub Secret Scanning for the demo
-  const p1 = "sk_c1a28ad18d1e3f6e673da3137";
-  const p2 = "2044b7e7527115dbbf9080f";
-  const apiKey = clientApiKey || process.env.ELEVENLABS_API_KEY || (p1 + p2);
-  
-  // Voice ID for a professional voice (e.g., Adam)
-  const voiceId = "xKhbyU7E3bC6T89Kn26c";
+  const apiKey = clientApiKey || process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    return res.status(400).json({ error: 'Missing Gemini API Key' });
+  }
 
   try {
-    const elevenlabsRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash:generateContent?key=${apiKey}`;
+    
+    const geminiRes = await fetch(url, {
       method: 'POST',
-      headers: {
-        'xi-api-key': apiKey,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        text: text,
-        model_id: "eleven_turbo_v2",
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75
+        contents: [{ parts: [{ text }] }],
+        generationConfig: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: "algieba"
+              }
+            }
+          }
         }
       })
     });
 
-    if (!elevenlabsRes.ok) {
-      const err = await elevenlabsRes.text();
-      console.error("ElevenLabs Error:", err);
-      return res.status(elevenlabsRes.status).json({ error: err });
+    if (!geminiRes.ok) {
+      const err = await geminiRes.text();
+      console.error("Gemini TTS Error:", err);
+      return res.status(geminiRes.status).json({ error: err });
     }
 
-    const arrayBuffer = await elevenlabsRes.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const data = await geminiRes.json();
+    
+    // Extract base64 audio
+    const part = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+    if (!part || !part.inlineData) {
+      throw new Error("No audio data returned from Gemini");
+    }
 
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.send(buffer);
+    const base64Audio = part.inlineData.data;
+    const mimeType = part.inlineData.mimeType || 'audio/wav';
+
+    const buffer = Buffer.from(base64Audio, 'base64');
+    res.setHeader('Content-Type', mimeType);
+    res.status(200).send(buffer);
   } catch (error) {
     console.error("TTS Server Error:", error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error', message: error.message });
   }
 }

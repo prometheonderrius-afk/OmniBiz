@@ -3,7 +3,7 @@ import PhantomCursor from './PhantomCursor';
 import BackendViewer from './BackendViewer';
 
 export default function ShowcaseRecorder({ onClose }) {
-  const [apiKey, setApiKey] = useState(import.meta.env.VITE_ELEVENLABS_API_KEY || '');
+  const [apiKey, setApiKey] = useState(import.meta.env.VITE_GEMINI_API_KEY || '');
   const [isRecording, setIsRecording] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [videoUrl, setVideoUrl] = useState(null);
@@ -289,10 +289,10 @@ export default function ShowcaseRecorder({ onClose }) {
         {!isRecording && !videoUrl && (
           <>
             <div>
-              <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ElevenLabs API Key (Required for High-Quality TTS)</label>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Gemini API Key (Required for High-Quality TTS)</label>
               <input 
                 type="password" 
-                placeholder="sk_..." 
+                placeholder="AIza..." 
                 value={apiKey} 
                 onChange={e => setApiKey(e.target.value)}
                 className="glass-input"
