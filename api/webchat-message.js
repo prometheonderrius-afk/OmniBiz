@@ -1,4 +1,4 @@
-import { dbAdmin, generateContentVertex } from './utils/gcp.js';
+import { dbAdmin, generateContentVertex } from './_utils/gcp.js';
 
 export default async function handler(req, res) {
   // Enable CORS

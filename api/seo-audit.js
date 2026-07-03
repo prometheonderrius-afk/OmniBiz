@@ -1,4 +1,4 @@
-import { generateContentVertex } from './utils/gcp.js';
+import { generateContentVertex } from './_utils/gcp.js';
 
 function parseStructuredJSON(text) {
   let cleanText = text.trim();
