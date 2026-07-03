@@ -1,3 +1,5 @@
+import { dbAdmin, generateContentVertex } from './utils/gcp.js';
+
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -17,153 +19,72 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'uid and text are required.' });
   }
 
-  const projectId = "wacom-canvas";
-
   try {
-    // 1. Fetch the user profile from Firestore REST API
-    const userDocUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`;
-    const userResponse = await fetch(userDocUrl);
+    // 1. Fetch the user profile using Firebase Admin
+    const userRef = dbAdmin.collection('users').doc(uid);
+    const userDoc = await userRef.get();
     
-    if (!userResponse.ok) {
-      return res.status(404).json({ error: 'Business profile not found or database error.' });
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'Business profile not found.' });
     }
 
-    const userDoc = await userResponse.json();
-    
-    // Parse businessData and autopilot from Firestore REST format
-    // Firestore REST API returns fields in a structured format: e.g. fields: { autopilot: { booleanValue: true } }
-    const fields = userDoc.fields || {};
-    const autopilot = fields.autopilot?.booleanValue || false;
-    const selectedTier = fields.selectedTier?.stringValue || 'free';
-    const savedHours = parseFloat(fields.savedHours?.doubleValue || fields.savedHours?.integerValue || '12.5');
-    
-    let businessData = {};
-    if (fields.businessData?.mapValue?.fields) {
-      const bFields = fields.businessData.mapValue.fields;
-      businessData = {
-        name: bFields.name?.stringValue || '',
-        category: bFields.category?.stringValue || 'Local Business',
-        location: bFields.location?.stringValue || '',
-        goals: bFields.goals?.stringValue || '',
-        ownerName: bFields.ownerName?.stringValue || 'Owner',
-        employees: bFields.employees?.arrayValue?.values?.map(v => ({
-          name: v.mapValue?.fields?.name?.stringValue || '',
-          role: v.mapValue?.fields?.role?.stringValue || ''
-        })) || []
-      };
-    }
+    const userData = userDoc.data();
+    const autopilot = userData.autopilot || false;
+    const selectedTier = userData.selectedTier || 'free';
+    const savedHours = parseFloat(userData.savedHours || 12.5);
+    const businessData = userData.businessData || {};
 
-    // 2. Write the visitor's message to Firestore using REST API
-    const chatColUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/webChat`;
-    const visitorMsgBody = {
-      fields: {
-        sender: { stringValue: 'Visitor' },
-        text: { stringValue: text },
-        isUser: { booleanValue: false },
-        createdAt: { integerValue: Date.now().toString() } // Firestore REST expects integer fields as strings representing numbers
-      }
-    };
-
-    const writeVisitorResponse = await fetch(chatColUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(visitorMsgBody)
+    // 2. Write the visitor's message to Firestore securely via Admin SDK
+    const webChatRef = userRef.collection('webChat');
+    await webChatRef.add({
+      sender: 'Visitor',
+      text: text,
+      isUser: false,
+      createdAt: Date.now()
     });
-
-    if (!writeVisitorResponse.ok) {
-      const writeErr = await writeVisitorResponse.json();
-      throw new Error(`Firestore REST write failed: ${JSON.stringify(writeErr)}`);
-    }
 
     let autoReplyText = '';
     let autoReplied = false;
 
-    // 3. If Autopilot is active and tier is eligible (pro or enterprise), trigger AI response
+    // 3. If Autopilot is active and tier is eligible (pro or enterprise), trigger Vertex AI response
     const hasAutopilot = autopilot && (selectedTier === 'pro' || selectedTier === 'enterprise');
+    
     if (hasAutopilot) {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (apiKey) {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-        
-        const response = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: `You are OmniBiz AI, an automated live-chat customer assistant for the business "${businessData.name || 'our company'}" (Category: "${businessData.category || 'Local Business'}").
+      const prompt = `The visitor just typed: "${text}"\nDraft a professional, friendly, and helpful live-chat response. Keep it under 60 words. Speak on behalf of the business. Do not use placeholders or markdown formatting.`;
+      
+      const systemInstruction = `You are OmniBiz AI, an automated live-chat customer assistant for the business "${businessData.name || 'our company'}" (Category: "${businessData.category || 'Local Business'}").
 Your business is located in: "${businessData.location || 'our service area'}".
 Business Owner Name: "${businessData.ownerName || 'Owner'}".
 Business Staff Members: ${businessData.employees?.map(e => `${e.name} (${e.role})`).join(', ') || 'none'}.
-Business Goals/Details: "${businessData.goals || 'provide top quality services'}".
+Business Goals/Details: "${businessData.goals || 'provide top quality services'}".`;
 
-The visitor just typed: "${text}".
-Draft a professional, friendly, and helpful live-chat response. Keep it under 60 words. Speak on behalf of the business. Do not use placeholders or markdown formatting.`
-              }]
-            }],
-            generationConfig: {
-              maxOutputTokens: 150,
-              temperature: 0.7
-            }
-          })
+      // Use GCP Vertex AI to generate content securely using their credits
+      const draft = await generateContentVertex(prompt, systemInstruction, { maxTokens: 150, temperature: 0.7 });
+      
+      if (draft) {
+        autoReplyText = draft.trim();
+        
+        // Write the AI reply to Firestore using Firebase Admin
+        await webChatRef.add({
+          sender: 'OmniBiz AI',
+          text: autoReplyText,
+          isUser: true,
+          createdAt: Date.now()
         });
 
-        const geminiData = await response.json();
-        const draft = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        
-        if (draft) {
-          autoReplyText = draft.trim();
-          
-          // Write the AI reply to Firestore using REST API
-          const aiMsgBody = {
-            fields: {
-              sender: { stringValue: 'OmniBiz AI' },
-              text: { stringValue: autoReplyText },
-              isUser: { booleanValue: true },
-              createdAt: { integerValue: Date.now().toString() }
-            }
-          };
+        // Update user stats in Firestore
+        await userRef.update({
+          savedHours: savedHours + 0.2
+        });
 
-          await fetch(chatColUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(aiMsgBody)
-          });
+        // Write system notification
+        await userRef.collection('notifications').add({
+          text: `Autopilot website chat auto-response dispatched to visitor.`,
+          type: 'auto',
+          createdAt: Date.now()
+        });
 
-          // Update user stats in Firestore (patch request for partial updates)
-          const patchUrl = `${userDocUrl}?updateMask.fieldPaths=savedHours`;
-          const patchBody = {
-            fields: {
-              savedHours: { doubleValue: savedHours + 0.2 }
-            }
-          };
-
-          await fetch(patchUrl, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(patchBody)
-          });
-
-          // Write system notification using REST API
-          const notifyUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/notifications`;
-          const notifyBody = {
-            fields: {
-              text: { stringValue: `Autopilot website chat auto-response dispatched to visitor.` },
-              type: { stringValue: 'auto' },
-              createdAt: { integerValue: Date.now().toString() }
-            }
-          };
-
-          await fetch(notifyUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(notifyBody)
-          });
-
-          autoReplied = true;
-        }
+        autoReplied = true;
       }
     }
 
@@ -175,7 +96,7 @@ Draft a professional, friendly, and helpful live-chat response. Keep it under 60
     });
 
   } catch (error) {
-    console.error('Webchat REST API webhook error:', error);
+    console.error('Webchat Webhook Error (GCP Version):', error);
     return res.status(500).json({ error: 'Internal server error', message: error.message });
   }
 }
