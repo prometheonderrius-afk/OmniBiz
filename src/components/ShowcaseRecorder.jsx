@@ -3,7 +3,7 @@ import PhantomCursor from './PhantomCursor';
 import BackendViewer from './BackendViewer';
 
 export default function ShowcaseRecorder({ onClose }) {
-  const [apiKey, setApiKey] = useState(import.meta.env.VITE_OPENAI_API_KEY || '');
+  const [apiKey, setApiKey] = useState(import.meta.env.VITE_ELEVENLABS_API_KEY || '');
   const [isRecording, setIsRecording] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [videoUrl, setVideoUrl] = useState(null);
@@ -131,7 +131,7 @@ export default function ShowcaseRecorder({ onClose }) {
       const res = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
+        body: JSON.stringify({ text, apiKey })
       });
       
       if (!res.ok) throw new Error("TTS API failed");
@@ -289,10 +289,10 @@ export default function ShowcaseRecorder({ onClose }) {
         {!isRecording && !videoUrl && (
           <>
             <div>
-              <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>OpenAI API Key (Required for High-Quality TTS)</label>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ElevenLabs API Key (Required for High-Quality TTS)</label>
               <input 
                 type="password" 
-                placeholder="sk-..." 
+                placeholder="sk_..." 
                 value={apiKey} 
                 onChange={e => setApiKey(e.target.value)}
                 className="glass-input"

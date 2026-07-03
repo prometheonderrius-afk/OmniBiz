@@ -3,7 +3,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { text } = req.body;
+  const { text, apiKey: clientApiKey } = req.body;
   if (!text) {
     return res.status(400).json({ error: 'Missing text' });
   }
@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   // Obfuscated ElevenLabs key to bypass GitHub Secret Scanning for the demo
   const p1 = "sk_c1a28ad18d1e3f6e673da3137";
   const p2 = "2044b7e7527115dbbf9080f";
-  const apiKey = process.env.ELEVENLABS_API_KEY || (p1 + p2);
+  const apiKey = clientApiKey || process.env.ELEVENLABS_API_KEY || (p1 + p2);
   
   // Voice ID for a professional voice (e.g., Adam)
   const voiceId = "xKhbyU7E3bC6T89Kn26c";
