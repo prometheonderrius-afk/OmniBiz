@@ -164,6 +164,7 @@ export default function AutomationSuite({
         ].map(tab => (
           <button
             key={tab.id}
+            data-tour={`subtab-${tab.id}`}
             onClick={() => setSubTab(tab.id)}
             style={{
               padding: '12px 20px',

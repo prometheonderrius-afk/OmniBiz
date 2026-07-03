@@ -1,65 +1,21 @@
 import React, { useState } from 'react';
 
+import twilioMissedCallRaw from '../../api/twilio-missed-call.js?raw';
+import webchatMessageRaw from '../../api/webchat-message.js?raw';
+import seoAuditRaw from '../../api/seo-audit.js?raw';
+import gcpRaw from '../../api/_utils/gcp.js?raw';
+import twilioSmsReplyRaw from '../../api/twilio-sms-reply.js?raw';
+
 export default function BackendViewer({ onClose }) {
-  const [activeFile, setActiveFile] = useState('twilio-sms-reply.js');
+  const [activeFile, setActiveFile] = useState('twilio-missed-call.js');
 
   const files = [
-    { name: 'discover-leads.js', icon: '⚡' },
-    { name: 'generate-ad.js', icon: '🎯' },
-    { name: 'twilio-missed-call.js', icon: '📞' },
-    { name: 'twilio-sms-reply.js', icon: '💬' },
-    { name: 'webchat-message.js', icon: '🌐' },
+    { name: 'twilio-missed-call.js', icon: '📞', raw: twilioMissedCallRaw },
+    { name: 'twilio-sms-reply.js', icon: '💬', raw: twilioSmsReplyRaw },
+    { name: 'webchat-message.js', icon: '🌐', raw: webchatMessageRaw },
+    { name: 'seo-audit.js', icon: '📈', raw: seoAuditRaw },
+    { name: 'gcp.js', icon: '☁️', raw: gcpRaw },
   ];
-
-  const codeSnippets = {
-    'twilio-sms-reply.js': `// api/twilio-sms-reply.js
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import twilio from 'twilio';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const { MessagingResponse } = twilio.twiml;
-
-export default async function handler(req, res) {
-  const { Body, From } = req.body;
-  
-  // 1. Fetch Business Context from Database
-  const businessData = await getBusinessProfile();
-  
-  // 2. Initialize Gemini 2.5 Flash for Conversational AI
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-  
-  const prompt = \`
-    You are an AI receptionist for \${businessData.name}. 
-    Respond professionally to this SMS: "\${Body}"
-  \`;
-
-  const result = await model.generateContent(prompt);
-  const replyText = result.response.text();
-
-  // 3. Dispatch Response via Twilio
-  const twiml = new MessagingResponse();
-  twiml.message(replyText);
-  
-  res.setHeader('Content-Type', 'text/xml');
-  res.status(200).send(twiml.toString());
-}`,
-    'discover-leads.js': `// api/discover-leads.js
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-export default async function handler(req, res) {
-  const { category, location } = req.body;
-  
-  // 1. Query OSM Nominatim Geocoder
-  const geoQuery = await fetch(\`https://nominatim.openstreetmap.org/search?q=\${category}+in+\${location}&format=json\`);
-  const rawLeads = await geoQuery.json();
-
-  // 2. Filter & Score with Gemini AI
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-  const scoredLeads = await model.generateContent(\`Evaluate these leads for a B2B SaaS pitch: \${JSON.stringify(rawLeads)}\`);
-  
-  res.status(200).json({ leads: JSON.parse(scoredLeads.response.text()) });
-}`
-  };
 
   return (
     <div style={{
@@ -133,20 +89,24 @@ export default async function handler(req, res) {
           <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
             <code style={{ fontSize: '0.9rem', lineHeight: '1.5', color: '#d4d4d4' }}>
               {/* Very basic manual syntax highlighting for visual effect */}
-              {(codeSnippets[activeFile] || '// Select a file to view source code.')
+              {(files.find(f => f.name === activeFile)?.raw || '// Select a file to view source code.')
                 .split('\n')
                 .map((line, i) => {
-                  let formattedLine = line;
+                  let formattedLine = line
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
+                  
                   // Extremely basic highlighting just for the demo
-                  formattedLine = formattedLine.replace(/(import|export|default|async|function|const|await|new|return)/g, '<span style="color: #c586c0">$1</span>');
-                  formattedLine = formattedLine.replace(/(from|\{.*\}|req|res)/g, '<span style="color: #9cdcfe">$1</span>');
+                  formattedLine = formattedLine.replace(/\b(import|export|default|async|function|const|let|var|await|new|return|if|else|try|catch)\b/g, '<span style="color: #c586c0">$1</span>');
+                  formattedLine = formattedLine.replace(/\b(from|req|res|require|json|console|log|error|warn)\b/g, '<span style="color: #9cdcfe">$1</span>');
                   formattedLine = formattedLine.replace(/('.*?'|".*?"|`.*?`)/g, '<span style="color: #ce9178">$1</span>');
                   formattedLine = formattedLine.replace(/(\/\/.*)/g, '<span style="color: #6a9955">$1</span>');
                   
                   return (
                     <div key={i} style={{ display: 'flex' }}>
-                      <div style={{ width: '30px', color: '#858585', userSelect: 'none' }}>{i + 1}</div>
-                      <div dangerouslySetInnerHTML={{ __html: formattedLine }} />
+                      <div style={{ width: '40px', color: '#858585', userSelect: 'none', textAlign: 'right', paddingRight: '16px' }}>{i + 1}</div>
+                      <div dangerouslySetInnerHTML={{ __html: formattedLine }} style={{ whiteSpace: 'pre' }} />
                     </div>
                   );
                 })}
