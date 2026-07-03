@@ -27,7 +27,7 @@ export default async function handler(req, res) {
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: {
-                voiceName: "Puck"
+                voiceName: "Schedar"
               }
             }
           }
