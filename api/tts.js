@@ -50,11 +50,30 @@ export default async function handler(req, res) {
     }
 
     const base64Audio = part.inlineData.data;
-    const mimeType = part.inlineData.mimeType || 'audio/wav';
+    const pcmBuffer = Buffer.from(base64Audio, 'base64');
+    
+    // Create a 44-byte WAV header
+    const dataSize = pcmBuffer.length;
+    const header = Buffer.alloc(44);
+    
+    header.write('RIFF', 0);
+    header.writeUInt32LE(dataSize + 36, 4);
+    header.write('WAVE', 8);
+    header.write('fmt ', 12);
+    header.writeUInt32LE(16, 16); // Subchunk1Size
+    header.writeUInt16LE(1, 20); // AudioFormat (1 = PCM)
+    header.writeUInt16LE(1, 22); // NumChannels (1 = Mono)
+    header.writeUInt32LE(24000, 24); // SampleRate
+    header.writeUInt32LE(24000 * 2, 28); // ByteRate (SampleRate * NumChannels * BitsPerSample/8)
+    header.writeUInt16LE(2, 32); // BlockAlign (NumChannels * BitsPerSample/8)
+    header.writeUInt16LE(16, 34); // BitsPerSample
+    header.write('data', 36);
+    header.writeUInt32LE(dataSize, 40);
+    
+    const wavBuffer = Buffer.concat([header, pcmBuffer]);
 
-    const buffer = Buffer.from(base64Audio, 'base64');
-    res.setHeader('Content-Type', mimeType);
-    res.status(200).send(buffer);
+    res.setHeader('Content-Type', 'audio/wav');
+    res.status(200).send(wavBuffer);
   } catch (error) {
     console.error("TTS Server Error:", error);
     res.status(500).json({ error: 'Internal Server Error', message: error.message });
