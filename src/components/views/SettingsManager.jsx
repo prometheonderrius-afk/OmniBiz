@@ -130,6 +130,39 @@ export default function SettingsManager({ businessData, userId, addNotification 
   const missedCallHook = `${webhookUrlBase}/api/twilio-missed-call?uid=${userId}`;
   const smsHook = `${webhookUrlBase}/api/twilio-sms-reply?uid=${userId}`;
 
+  const handleTestTwilioWebhook = async () => {
+    if (!twilioAccountSid || !twilioPhoneNumber) {
+      alert("Please save your Twilio settings first.");
+      return;
+    }
+    const testFrom = prompt("Enter a phone number to simulate a missed call from (e.g. +15551234567):");
+    if (!testFrom) return;
+
+    try {
+      addNotification("Simulating missed call from " + testFrom + "...", "system");
+      const res = await fetch(`/api/twilio-missed-call?uid=${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          From: testFrom,
+          To: twilioPhoneNumber,
+          CallStatus: 'no-answer',
+          CallSid: 'CA_test_call_sid_123'
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("Success! The AI drafted and sent via Twilio: " + data.textback);
+        addNotification("Twilio textback successfully sent to " + testFrom, "system");
+      } else {
+        alert("Error testing webhook: " + (data.error || JSON.stringify(data)));
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to hit API endpoint. Make sure you're testing this on your live Vercel deployment, not localhost. " + e.message);
+    }
+  };
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
       
@@ -329,6 +362,20 @@ export default function SettingsManager({ businessData, userId, addNotification 
                   <button className="glass-button glass-button-secondary" style={{ padding: '8px 14px', borderRadius: '4px', fontSize: '0.75rem' }} onClick={() => { navigator.clipboard.writeText(smsHook); alert("Copied Message Webhook!"); }}>Copy</button>
                 </div>
               </div>
+            </div>
+
+            <div style={{ marginTop: '12px', padding: '16px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+              <h4 style={{ fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: '8px' }}>🧪 Test Missed-Call AI Pipeline</h4>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '12px', lineHeight: '1.4' }}>
+                Simulate an incoming missed call right now. This will trigger your Vercel endpoint, draft a custom response using Vertex AI, and immediately dispatch a real SMS via your Twilio account to the number you specify. (Note: Run this on your live Vercel URL).
+              </p>
+              <button 
+                className="glass-button" 
+                onClick={handleTestTwilioWebhook}
+                style={{ background: 'linear-gradient(135deg, var(--accent-purple) 0%, #ec4899 100%)', padding: '8px 16px', fontSize: '0.85rem' }}
+              >
+                Send Test Call Payload
+              </button>
             </div>
 
             <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '16px', marginTop: '16px' }}>

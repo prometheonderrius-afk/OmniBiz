@@ -28,7 +28,7 @@ import AdManager from './components/views/AdManager';
 import ContractManager from './components/views/ContractManager';
 import BillingManager from './components/views/BillingManager';
 import SettingsManager from './components/views/SettingsManager';
-import Sandbox from './components/GravitySandbox/Sandbox';
+
 import ShowcaseRecorder from './components/ShowcaseRecorder';
 
 export default function App() {
@@ -40,7 +40,7 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [portalMode, setPortalMode] = useState(null);
-  const [showSandbox, setShowSandbox] = useState(false);
+
   const [showRecorder, setShowRecorder] = useState(false);
 
   // Global Config States
@@ -439,19 +439,7 @@ export default function App() {
     );
   }
 
-  if (showSandbox) {
-    return (
-      <div style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 100 }}>
-        <button 
-          onClick={() => setShowSandbox(false)}
-          style={{ position: 'absolute', top: 20, right: 20, zIndex: 110, padding: '10px 20px', background: 'var(--accent-purple)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-        >
-          Exit Sandbox
-        </button>
-        <Sandbox />
-      </div>
-    );
-  }
+
 
   if (processingStripe) {
     return (
@@ -522,23 +510,6 @@ export default function App() {
             </button>
           </div>
 
-          <div style={{ marginTop: '24px', textAlign: 'center', borderTop: '1px solid var(--border-glass)', paddingTop: '24px' }}>
-            <button 
-              onClick={() => setShowSandbox(true)}
-              className="glass-button"
-              style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', marginBottom: '16px' }}
-            >
-              🚀 Launch Gravity Sandbox Prototype
-            </button>
-            <br />
-            <button 
-              onClick={() => window.open('http://localhost:5175', '_blank')}
-              className="glass-button"
-              style={{ background: 'linear-gradient(135deg, #ff69b4 0%, #d81b60 100%)' }}
-            >
-              🌸 Launch Tokyo Beach Ladies
-            </button>
-          </div>
         </div>
       </div>
     );
@@ -810,18 +781,7 @@ export default function App() {
                   addNotification={addNotification}
                 />
               );
-            case 'sandbox':
-              return (
-                <div style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 100 }}>
-                  <button 
-                    onClick={() => setActiveTab('overview')}
-                    style={{ position: 'absolute', top: 20, right: 20, zIndex: 110, padding: '10px 20px', background: 'var(--accent-purple)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                  >
-                    Close Sandbox
-                  </button>
-                  <Sandbox />
-                </div>
-              );
+
             default:
               return <div>View not found</div>;
           }
