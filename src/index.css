@@ -360,6 +360,33 @@ h1, h2, h3, h4, h5, h6 {
   vertical-align: middle;
 }
 
+/* Responsive Grid Utilities */
+.grid-split-12-10 {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 24px;
+}
+.grid-split-3-2 {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 24px;
+}
+.grid-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.grid-three-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+
+/* Base Mobile Header styling (hidden on desktop) */
+.mobile-header {
+  display: none;
+}
+
 /* Responsive Overrides */
 @media (max-width: 1024px) {
   .dashboard-container {
@@ -367,6 +394,86 @@ h1, h2, h3, h4, h5, h6 {
   }
   
   .sidebar {
-    display: none; /* In a real app we would build a drawer, for the mockup dashboard we focus on desktop view for premium feel */
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 260px;
+    height: 100vh;
+    z-index: 1000;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .sidebar.mobile-open {
+    left: 0;
+  }
+
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 999;
+  }
+
+  .sidebar-backdrop.active {
+    display: block;
+  }
+  
+  .main-content {
+    padding: 20px;
+    max-height: none;
+    overflow-y: visible;
+  }
+  
+  /* Mobile Header */
+  .mobile-header {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(10, 14, 26, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-glass);
+    padding: 16px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 900;
+  }
+  
+  /* Hide desktop header spacing if needed */
+  .desktop-only-header {
+    display: none !important;
+  }
+
+  /* Grid Stackers */
+  .grid-split-12-10,
+  .grid-split-3-2,
+  .grid-two-col,
+  .grid-three-col {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Ensure card margins look good on small viewports */
+  .glass-card {
+    padding: 20px !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+@media (max-width: 580px) {
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .onboarding-card {
+    padding: 20px !important;
   }
 }

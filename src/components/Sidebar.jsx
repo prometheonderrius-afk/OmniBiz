@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSelectedTier, businessName, onToggleRecorder }) {
+export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSelectedTier, businessName, onToggleRecorder, mobileOpen, onClose }) {
   const menuItems = [
     { id: 'overview', label: 'Command Center', icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
@@ -38,9 +38,16 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
     }
   };
 
+  const handleTabClick = (tabId) => {
+    setActiveTab(tabId);
+    if (onClose) {
+      onClose();
+    }
+  };
+
   return (
-    <aside className="sidebar" style={{
-      background: 'rgba(5, 7, 13, 0.9)',
+    <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`} style={{
+      background: 'rgba(5, 7, 13, 0.95)',
       borderRight: '1px solid var(--border-glass)',
       padding: '24px 16px',
       display: 'flex',
@@ -52,27 +59,48 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
     }}>
       {/* Brand Header */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <div style={{
-            width: '28px',
-            height: '28px',
-            borderRadius: '6px',
-            background: 'linear-gradient(135deg, var(--accent-purple) 0%, #6d28d9 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontWeight: '800',
-            fontSize: '0.9rem'
-          }}>Ω</div>
-          <span style={{ 
-            fontFamily: 'var(--font-heading)',
-            fontSize: '1.2rem', 
-            fontWeight: '800',
-            letterSpacing: '-0.02em'
-          }}>
-            OmniBiz <span className="text-gradient-purple">AI</span>
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '6px',
+              background: 'linear-gradient(135deg, var(--accent-purple) 0%, #6d28d9 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontWeight: '800',
+              fontSize: '0.9rem'
+            }}>Ω</div>
+            <span style={{ 
+              fontFamily: 'var(--font-heading)',
+              fontSize: '1.2rem', 
+              fontWeight: '800',
+              letterSpacing: '-0.02em'
+            }}>
+              OmniBiz <span className="text-gradient-purple">AI</span>
+            </span>
+          </div>
+          {/* Close button for mobile drawer */}
+          {onClose && (
+            <button 
+              onClick={onClose}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              className="mobile-close-btn"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          )}
         </div>
         
         {/* Business Context */}
@@ -96,7 +124,7 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
               <button
                 key={item.id}
                 data-tour={`tab-${item.id}`}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => handleTabClick(item.id)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -131,9 +159,12 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
       </div>
 
       {/* Showcase Recorder Shortcut */}
-      <div style={{ marginBottom: '20px' }}>
+      <div style={{ marginBottom: '20px', marginTop: '20px' }}>
         <button 
-          onClick={onToggleRecorder}
+          onClick={() => {
+            onToggleRecorder();
+            if (onClose) onClose();
+          }}
           className="glass-button"
           style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, var(--accent-purple) 0%, #ec4899 100%)', border: 'none', padding: '10px 14px' }}
         >
@@ -161,3 +192,4 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
     </aside>
   );
 }
+

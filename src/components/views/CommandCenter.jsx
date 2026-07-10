@@ -162,7 +162,7 @@ export default function CommandCenter({
           <span className="badge badge-purple" style={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Dynamic Persona Active</span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px' }}>
+        <div className="grid-split-12-10">
           {/* Rules / Prompts */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <h4 style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>🤖 AI Co-Pilot Directives</h4>
@@ -272,11 +272,7 @@ export default function CommandCenter({
       </div>
 
       {/* Main Content Split: Quick Simulations & Notifications */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '3fr 2fr',
-        gap: '24px'
-      }}>
+      <div className="grid-split-3-2">
         
         {/* Left Column: Quick Simulation Triggers */}
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

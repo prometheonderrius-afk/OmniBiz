@@ -42,6 +42,7 @@ export default function App() {
   const [portalMode, setPortalMode] = useState(null);
 
   const [showRecorder, setShowRecorder] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Global Config States
   const [onboardingComplete, setOnboardingComplete] = useState(false);
@@ -578,6 +579,12 @@ export default function App() {
   // Dashboard Screen
   return (
     <div className="dashboard-container">
+      {/* Sidebar Backdrop for Mobile */}
+      <div 
+        className={`sidebar-backdrop ${mobileSidebarOpen ? 'active' : ''}`} 
+        onClick={() => setMobileSidebarOpen(false)} 
+      />
+
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
@@ -588,10 +595,47 @@ export default function App() {
         }}
         businessName={businessData.name}
         onToggleRecorder={() => setShowRecorder(!showRecorder)}
+        mobileOpen={mobileSidebarOpen}
+        onClose={() => setMobileSidebarOpen(false)}
       />
       <main className="main-content" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        {/* Header toolbar for Sign Out */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+        {/* Mobile Header Toolbar */}
+        <div className="mobile-header">
+          <button 
+            onClick={() => setMobileSidebarOpen(true)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-primary)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '6px'
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <span style={{ fontWeight: '800', fontSize: '1rem', letterSpacing: '-0.02em', fontFamily: 'var(--font-heading)' }}>
+            OmniBiz <span className="text-gradient-purple">AI</span>
+          </span>
+          <button 
+            onClick={handleSignOut}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '6px'
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+        </div>
+
+        {/* Desktop Header Toolbar */}
+        <div className="desktop-only-header" style={{ display: 'flex', justifyContent: 'flex-end', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
           <button 
             className="glass-button glass-button-secondary" 
             onClick={handleSignOut}
