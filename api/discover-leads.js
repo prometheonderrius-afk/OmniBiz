@@ -1,8 +1,8 @@
 function parseStructuredJSON(text) {
   let cleanText = text.trim();
-  if (cleanText.startsWith('```')) {
-    cleanText = cleanText.replace(/^```(?:json)?\n?/, '');
-    cleanText = cleanText.replace(/\n?```$/, '');
+  if (cleanText.startsWith("```")) {
+    cleanText = cleanText.replace(/^```(?:json)?\n?/, "");
+    cleanText = cleanText.replace(/\n?```$/, "");
     cleanText = cleanText.trim();
   }
   try {
@@ -16,38 +16,40 @@ function parseStructuredJSON(text) {
 function parseDelimitedLeads(text) {
   const leads = [];
   const blocks = text.split(/LEAD_START/i);
-  
+
   for (const block of blocks) {
     if (!block.trim()) continue;
-    
+
     const nameMatch = block.match(/NAME:\s*(.*)/i);
     const companyMatch = block.match(/COMPANY:\s*(.*)/i);
     const emailMatch = block.match(/EMAIL:\s*(.*)/i);
     const phoneMatch = block.match(/PHONE:\s*(.*)/i);
     const scoreMatch = block.match(/SCORE:\s*(.*)/i);
     const notesMatch = block.match(/NOTES:\s*(.*)/i);
-    
+
     if (companyMatch) {
       leads.push({
-        name: nameMatch ? nameMatch[1].trim() : 'Owner',
+        name: nameMatch ? nameMatch[1].trim() : "Owner",
         company: companyMatch[1].trim(),
-        email: emailMatch ? emailMatch[1].trim() : 'info@domain.com',
-        phone: phoneMatch ? phoneMatch[1].trim() : '',
+        email: emailMatch ? emailMatch[1].trim() : "info@domain.com",
+        phone: phoneMatch ? phoneMatch[1].trim() : "",
         score: scoreMatch ? parseInt(scoreMatch[1].trim(), 10) || 70 : 70,
-        source: 'AI Maps Finder',
-        notes: notesMatch ? notesMatch[1].trim() : 'Lacks search presence.'
+        source: "AI Maps Finder",
+        notes: notesMatch ? notesMatch[1].trim() : "Lacks search presence.",
       });
     }
   }
-  
+
   return leads;
 }
 
 function generateLocalMockLeads(category, location) {
   const capCategory = category.charAt(0).toUpperCase() + category.slice(1);
   const capLocation = location.charAt(0).toUpperCase() + location.slice(1);
-  const domain = capLocation.toLowerCase().replace(/[^a-z0-9]/g, '') + capCategory.toLowerCase().replace(/[^a-z0-9]/g, '');
-  
+  const domain =
+    capLocation.toLowerCase().replace(/[^a-z0-9]/g, "") +
+    capCategory.toLowerCase().replace(/[^a-z0-9]/g, "");
+
   return [
     {
       name: "Joe Miller (Owner)",
@@ -56,7 +58,7 @@ function generateLocalMockLeads(category, location) {
       phone: "540-555-0142",
       score: 88,
       source: "AI Maps Finder",
-      notes: `Lacks claimed Google Business Profile. Website lacks optimized meta description tags for ${capCategory} keywords.`
+      notes: `Lacks claimed Google Business Profile. Website lacks optimized meta description tags for ${capCategory} keywords.`,
     },
     {
       name: "Sarah Jenkins (Manager)",
@@ -65,7 +67,8 @@ function generateLocalMockLeads(category, location) {
       phone: "540-555-0189",
       score: 74,
       source: "AI Maps Finder",
-      notes: "Website lacks mobile sitemap validation. SEO keywords are unoptimized for local searches."
+      notes:
+        "Website lacks mobile sitemap validation. SEO keywords are unoptimized for local searches.",
     },
     {
       name: "Marcus Brody (Owner)",
@@ -74,68 +77,75 @@ function generateLocalMockLeads(category, location) {
       phone: "540-555-0111",
       score: 92,
       source: "AI Maps Finder",
-      notes: `Very poor local search presence. Missing alt tags on images and title header hierarchy is incorrect.`
-    }
+      notes: `Very poor local search presence. Missing alt tags on images and title header hierarchy is incorrect.`,
+    },
   ];
 }
 
 function mapOSMLeadsLocally(osmData, category) {
   const capCategory = category.charAt(0).toUpperCase() + category.slice(1);
   return osmData.map((poi, idx) => {
-    const name = poi.name || poi.display_name.split(',')[0] || 'Local Business';
-    const address = poi.display_name || '';
-    const phone = poi.extratags?.phone || poi.extratags?.['contact:phone'] || '540-555-0199';
-    const website = poi.extratags?.website || '';
+    const name = poi.name || poi.display_name.split(",")[0] || "Local Business";
+    const address = poi.display_name || "";
+    const phone =
+      poi.extratags?.phone ||
+      poi.extratags?.["contact:phone"] ||
+      "540-555-0199";
+    const website = poi.extratags?.website || "";
     const company = name;
-    
+
     const score = Math.floor(Math.random() * 30) + 60; // priority score between 60 and 90
-    const domain = name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'localbusiness';
+    const domain =
+      name.toLowerCase().replace(/[^a-z0-9]/g, "") || "localbusiness";
     const email = `contact@${domain}.com`;
-    const notes = `Lacks search presence. Checked OpenStreetMap directory. Missing optimized meta title tags for ${capCategory} and Google Business profile claims. Website: ${website || 'Not listed'}.`;
-    
+    const notes = `Lacks search presence. Checked OpenStreetMap directory. Missing optimized meta title tags for ${capCategory} and Google Business profile claims. Website: ${website || "Not listed"}.`;
+
     return {
-      name: 'Owner',
+      name: "Owner",
       company,
       email,
       phone,
       score,
-      source: 'AI Maps Finder',
-      notes
+      source: "AI Maps Finder",
+      notes,
     };
   });
 }
 
 export default async function handler(req, res) {
   // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   const { category, location } = req.body;
   if (!category || !location) {
-    return res.status(400).json({ error: 'category and location parameters are required.' });
+    return res
+      .status(400)
+      .json({ error: "category and location parameters are required." });
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ 
-      error: 'API Configuration Error', 
-      message: 'GEMINI_API_KEY is not defined in serverless environment variables.' 
+    return res.status(500).json({
+      error: "API Configuration Error",
+      message:
+        "GEMINI_API_KEY is not defined in serverless environment variables.",
     });
   }
 
   // Use the v1beta endpoint where structured outputs and grounding features are fully supported
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
-  let rawSearchContent = '';
+  let rawSearchContent = "";
   let primarySuccess = false;
   let osmData = null;
 
@@ -145,33 +155,37 @@ export default async function handler(req, res) {
 Locate 3 real businesses. Write down their contact person name (if you can find or infer one, e.g. "Store Manager" or "Owner"), official business name, public email address, public phone number, and a brief description of their specific digital presence or SEO gaps (e.g. lacks mobile sitemaps, missing headers).`;
 
     const requestBody = {
-      contents: [{
-        parts: [{
-          text: searchPrompt
-        }]
-      }],
+      contents: [
+        {
+          parts: [
+            {
+              text: searchPrompt,
+            },
+          ],
+        },
+      ],
       tools: [
         {
-          google_search: {}
-        }
+          google_search: {},
+        },
       ],
       generationConfig: {
         maxOutputTokens: 1000,
-        temperature: 0.4
-      }
+        temperature: 0.4,
+      },
     };
 
     const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
     });
 
     const data = await response.json();
     if (data.error) {
       console.warn("Primary search grounding failed:", data.error);
     } else {
-      rawSearchContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      rawSearchContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
       if (rawSearchContent) {
         primarySuccess = true;
       }
@@ -182,31 +196,37 @@ Locate 3 real businesses. Write down their contact person name (if you can find 
 
   // 2. Secondary Attempt: If google_search fails (billing blocked/credits depleted), query OpenStreetMap Nominatim for real businesses
   if (!primarySuccess) {
-    console.log("Primary search grounding failed. Using OpenStreetMap Nominatim fallback...");
+    console.log(
+      "Primary search grounding failed. Using OpenStreetMap Nominatim fallback...",
+    );
     try {
-      const osmUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(category + ' in ' + location)}&format=json&addressdetails=1&extratags=1&limit=10`;
+      const osmUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(category + " in " + location)}&format=json&addressdetails=1&extratags=1&limit=10`;
       const osmResponse = await fetch(osmUrl, {
         headers: {
-          'User-Agent': 'OmniBizAI/1.0 (contact@omnibiz.ai)'
-        }
+          "User-Agent": "OmniBizAI/1.0 (contact@omnibiz.ai)",
+        },
       });
-      
+
       if (osmResponse.ok) {
         osmData = await osmResponse.json();
         if (osmData && osmData.length > 0) {
           // Format OSM results into plain text for Gemini formatting
-          rawSearchContent = osmData.map((poi, idx) => {
-            const name = poi.name || poi.display_name.split(',')[0] || 'Local Business';
-            const address = poi.display_name || '';
-            const phone = poi.extratags?.phone || poi.extratags?.['contact:phone'] || '';
-            const website = poi.extratags?.website || '';
-            return `Business ${idx + 1}:
+          rawSearchContent = osmData
+            .map((poi, idx) => {
+              const name =
+                poi.name || poi.display_name.split(",")[0] || "Local Business";
+              const address = poi.display_name || "";
+              const phone =
+                poi.extratags?.phone || poi.extratags?.["contact:phone"] || "";
+              const website = poi.extratags?.website || "";
+              return `Business ${idx + 1}:
 Name: ${name}
 Address: ${address}
 Phone: ${phone}
 Website: ${website}`;
-          }).join('\n\n');
-          
+            })
+            .join("\n\n");
+
           if (rawSearchContent) {
             primarySuccess = true;
             console.log("Successfully retrieved real POIs from OpenStreetMap.");
@@ -223,34 +243,42 @@ Website: ${website}`;
     console.log("Using mock plain-text generation fallback...");
     try {
       const fallbackRequestBody = {
-        contents: [{
-          parts: [{
-            text: `Generate 3 highly realistic, mock local business sales leads for the category: "${category}" in the location: "${location}".
+        contents: [
+          {
+            parts: [
+              {
+                text: `Generate 3 highly realistic, mock local business sales leads for the category: "${category}" in the location: "${location}".
 For each lead, provide:
 1. Contact person name (e.g. "Owner" or inferred owner's name)
 2. Business/Company name
 3. Contact email address (e.g., info@domain.com)
 4. Phone number
-5. specific local marketing/SEO audit notes detailing why they need SEO support.`
-          }]
-        }],
+5. specific local marketing/SEO audit notes detailing why they need SEO support.`,
+              },
+            ],
+          },
+        ],
         generationConfig: {
           maxOutputTokens: 1000,
-          temperature: 0.4
-        }
+          temperature: 0.4,
+        },
       };
 
       const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(fallbackRequestBody)
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fallbackRequestBody),
       });
 
       const data = await response.json();
       if (!data.error) {
-        rawSearchContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        rawSearchContent =
+          data.candidates?.[0]?.content?.parts?.[0]?.text || "";
       } else {
-        console.warn("Fallback mock generation failed due to API credentials/credits:", data.error);
+        console.warn(
+          "Fallback mock generation failed due to API credentials/credits:",
+          data.error,
+        );
       }
     } catch (err) {
       console.warn("Fallback plain text generation error:", err);
@@ -263,9 +291,11 @@ For each lead, provide:
   if (rawSearchContent) {
     try {
       const formatRequestBody = {
-        contents: [{
-          parts: [{
-            text: `You are an expert data parsing assistant.
+        contents: [
+          {
+            parts: [
+              {
+                text: `You are an expert data parsing assistant.
 Analyze the following text describing local business leads:
 "${rawSearchContent}"
 
@@ -288,34 +318,43 @@ The JSON output MUST match this structure:
 CRITICAL INSTRUCTIONS FOR JSON FORMATTING:
 - Ensure all string values are on a single line. Do NOT include literal newlines (\\n) or control characters inside any JSON string fields.
 - Do NOT use double quotes (\") inside any string fields (such as company names or notes). If a quote is needed, use single quotes (') instead.
-Format the output strictly according to the schema.`
-          }]
-        }],
+Format the output strictly according to the schema.`,
+              },
+            ],
+          },
+        ],
         generationConfig: {
           responseMimeType: "application/json",
           maxOutputTokens: 1500,
-          temperature: 0.1
-        }
+          temperature: 0.1,
+        },
       };
 
       const formatResponse = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formatRequestBody)
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formatRequestBody),
       });
 
       const formatData = await formatResponse.json();
       if (!formatData.error) {
-        const outputText = formatData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const outputText =
+          formatData.candidates?.[0]?.content?.parts?.[0]?.text || "";
         if (outputText) {
           const parsedData = parseStructuredJSON(outputText);
           parsedLeads = parsedData.leads || [];
         }
       } else {
-        console.warn("JSON formatting API error (billing/credits?):", formatData.error);
+        console.warn(
+          "JSON formatting API error (billing/credits?):",
+          formatData.error,
+        );
       }
     } catch (jsonError) {
-      console.warn("JSON formatting failed, trying delimited text fallback...", jsonError);
+      console.warn(
+        "JSON formatting failed, trying delimited text fallback...",
+        jsonError,
+      );
     }
 
     // 5. Delimited Text Fallback: If JSON parsing failed, call Gemini to output a simple delimited text block and parse it.
@@ -339,29 +378,37 @@ LEAD_END
 Do NOT include any other text or explanation. Output strictly the delimited leads.`;
 
         const requestBody = {
-          contents: [{
-            parts: [{
-              text: delimitedPrompt
-            }]
-          }],
+          contents: [
+            {
+              parts: [
+                {
+                  text: delimitedPrompt,
+                },
+              ],
+            },
+          ],
           generationConfig: {
             maxOutputTokens: 1000,
-            temperature: 0.1
-          }
+            temperature: 0.1,
+          },
         };
 
         const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody)
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
         });
 
         const data = await response.json();
         if (!data.error) {
-          const outputText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const outputText =
+            data.candidates?.[0]?.content?.parts?.[0]?.text || "";
           parsedLeads = parseDelimitedLeads(outputText);
         } else {
-          console.warn("Delimited fallback API error (billing/credits?):", data.error);
+          console.warn(
+            "Delimited fallback API error (billing/credits?):",
+            data.error,
+          );
         }
       } catch (err) {
         console.warn("Delimited fallback error:", err);
@@ -370,8 +417,14 @@ Do NOT include any other text or explanation. Output strictly the delimited lead
   }
 
   // 6. Fail-Safe Execution: If Gemini formatting failed but we have OSM geocoded data, map it locally!
-  if ((!parsedLeads || parsedLeads.length === 0) && osmData && osmData.length > 0) {
-    console.log("Gemini formatting failed but OSM data is available. Mapping OSM results locally...");
+  if (
+    (!parsedLeads || parsedLeads.length === 0) &&
+    osmData &&
+    osmData.length > 0
+  ) {
+    console.log(
+      "Gemini formatting failed but OSM data is available. Mapping OSM results locally...",
+    );
     parsedLeads = mapOSMLeadsLocally(osmData, category);
   }
 

@@ -1,3 +1,5 @@
+import { dbAdmin } from './_utils/gcp.js';
+
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -17,37 +19,36 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing parameters: uid, to, and body are required.' });
   }
 
-  const projectId = "wacom-canvas";
-
   try {
-    // 1. Fetch user business settings from Firestore REST API
-    const userDocUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`;
-    const userResponse = await fetch(userDocUrl);
-    
-    if (!userResponse.ok) {
-      return res.status(404).json({ error: 'Business profile not found or database error.' });
-    }
+    // 1. Resolve Twilio Credentials (Vercel Env first, fallback to Firestore Secure adminSettings)
+    let twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || '';
+    let twilioApiKeySid = process.env.TWILIO_API_KEY_SID || '';
+    let twilioApiKeySecret = process.env.TWILIO_API_KEY_SECRET || '';
+    let twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER || '';
 
-    const userDoc = await userResponse.json();
-    const fields = userDoc.fields || {};
-    
-    let twilioAccountSid = '';
-    let twilioApiKeySid = '';
-    let twilioApiKeySecret = '';
-    let twilioPhoneNumber = '';
-
-    if (fields.businessData?.mapValue?.fields) {
-      const bFields = fields.businessData.mapValue.fields;
-      twilioAccountSid = bFields.twilioAccountSid?.stringValue || '';
-      twilioApiKeySid = bFields.twilioApiKeySid?.stringValue || '';
-      twilioApiKeySecret = bFields.twilioApiKeySecret?.stringValue || '';
-      twilioPhoneNumber = bFields.twilioPhoneNumber?.stringValue || '';
+    if (!twilioAccountSid) {
+      const adminDoc = await dbAdmin.collection('system').doc('adminSettings').get();
+      if (adminDoc.exists) {
+        const adminData = adminDoc.data();
+        twilioAccountSid = adminData.twilioAccountSid || '';
+        twilioApiKeySid = adminData.twilioApiKeySid || '';
+        twilioApiKeySecret = adminData.twilioApiKeySecret || '';
+        twilioPhoneNumber = adminData.twilioPhoneNumber || '';
+      }
     }
 
     if (!twilioAccountSid || !twilioApiKeySid || !twilioApiKeySecret || !twilioPhoneNumber) {
+      // Log failure to diagnostics logger
+      await dbAdmin.collection('apiLogs').add({
+        timestamp: Date.now(),
+        apiName: '/api/send-sms',
+        status: 'failed',
+        error: 'Missing Twilio Configuration. Please save credentials in Admin Settings.'
+      });
+
       return res.status(400).json({ 
         error: 'Missing Twilio Configuration',
-        message: 'Please navigate to Settings & Integrations in the dashboard and save your Twilio credentials first.' 
+        message: 'Master Twilio credentials are not configured by the system administrator.' 
       });
     }
 
@@ -59,7 +60,6 @@ export default async function handler(req, res) {
     params.append('To', to);
     params.append('Body', body);
 
-    // Basic Auth header using API Key SID and API Key Secret
     const authString = Buffer.from(`${twilioApiKeySid}:${twilioApiKeySecret}`).toString('base64');
 
     const twilioRes = await fetch(twilioUrl, {
@@ -75,6 +75,15 @@ export default async function handler(req, res) {
 
     if (!twilioRes.ok) {
       console.error('Twilio API responded with error:', twilioData);
+      
+      // Log failure to database
+      await dbAdmin.collection('apiLogs').add({
+        timestamp: Date.now(),
+        apiName: '/api/send-sms',
+        status: 'failed',
+        error: twilioData.message || 'Failed to dispatch SMS through Twilio API.'
+      });
+
       return res.status(502).json({ 
         error: 'Twilio API Error', 
         message: twilioData.message || 'Failed to dispatch SMS through Twilio.',
@@ -82,10 +91,31 @@ export default async function handler(req, res) {
       });
     }
 
+    // Log success in diagnostic logger
+    await dbAdmin.collection('apiLogs').add({
+      timestamp: Date.now(),
+      apiName: '/api/send-sms',
+      status: 'success',
+      details: `Successfully sent message to ${to} (SID: ${twilioData.sid})`
+    });
+
     return res.status(200).json({ success: true, sid: twilioData.sid });
 
   } catch (error) {
     console.error('SMS sending error:', error);
+
+    // Log unexpected errors
+    try {
+      await dbAdmin.collection('apiLogs').add({
+        timestamp: Date.now(),
+        apiName: '/api/send-sms',
+        status: 'failed',
+        error: error.message || 'Internal Server Error'
+      });
+    } catch (e) {
+      console.error("Logger writing crash:", e);
+    }
+
     return res.status(500).json({ error: 'Internal server error', message: error.message });
   }
 }

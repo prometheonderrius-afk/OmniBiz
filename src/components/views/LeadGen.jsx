@@ -7,7 +7,7 @@ export default function LeadGen({
   savedHours,
   setSavedHours,
   addNotification,
-  isFeatureLocked,
+  isFeatureLocked = () => false,
   selectedTier
 }) {
   const [selectedLead, setSelectedLead] = useState(null);

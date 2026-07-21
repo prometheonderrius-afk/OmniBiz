@@ -559,6 +559,7 @@ export default function App() {
   if (portalMode === 'ADMIN') {
     return (
       <AgencyDashboard 
+        db={db}
         leads={leads}
         setLeads={setLeads}
         businessData={businessData}
@@ -822,6 +823,7 @@ export default function App() {
                 <SettingsManager
                   businessData={businessData}
                   userId={user.uid}
+                  userEmail={user.email}
                   addNotification={addNotification}
                 />
               );

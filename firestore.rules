@@ -21,5 +21,14 @@ service cloud.firestore {
       match /contracts/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
       match /notifications/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
     }
+
+    match /system/adminSettings {
+      allow read, write: if request.auth != null && request.auth.token.email == 'prometheonderrius@gmail.com';
+    }
+
+    match /apiLogs/{logId} {
+      allow read: if request.auth != null && request.auth.token.email == 'prometheonderrius@gmail.com';
+      allow write: if true;
+    }
   }
 }

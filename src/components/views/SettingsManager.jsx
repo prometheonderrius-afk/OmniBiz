@@ -20,7 +20,7 @@ const presets = {
   navy_corporate: { name: 'Navy Corporate', primary: '#2563eb', secondary: '#fbbf24', desc: 'Navy blue & gold. Professional agency.' }
 };
 
-export default function SettingsManager({ businessData, userId, addNotification }) {
+export default function SettingsManager({ businessData, userId, userEmail, addNotification }) {
   const [activeSubTab, setActiveSubTab] = useState('profile'); // 'profile', 'integrations', 'webhooks'
   
   // Profile Forms
@@ -29,31 +29,26 @@ export default function SettingsManager({ businessData, userId, addNotification 
   const [location, setLocation] = useState(businessData.location || '');
   const [website, setWebsite] = useState(businessData.website || '');
   const [targetAudience, setTargetAudience] = useState(businessData.targetAudience || '');
+  const [themePreset, setThemePreset] = useState(businessData.themePreset || 'cyber_saas');
   const [ownerName, setOwnerName] = useState(businessData.ownerName || '');
   const [ownerEmail, setOwnerEmail] = useState(businessData.ownerEmail || '');
   const [ownerPhone, setOwnerPhone] = useState(businessData.ownerPhone || '');
-  const [themePreset, setThemePreset] = useState(businessData.themePreset || 'cyber_saas');
-
-  // Staff List Form
+  
+  // Employees
   const [employees, setEmployees] = useState(businessData.employees || []);
   const [newEmpName, setNewEmpName] = useState('');
   const [newEmpRole, setNewEmpRole] = useState('');
 
-  // Integrations Keys
+  // Credentials
   const [twilioAccountSid, setTwilioAccountSid] = useState(businessData.twilioAccountSid || '');
   const [twilioApiKeySid, setTwilioApiKeySid] = useState(businessData.twilioApiKeySid || '');
   const [twilioApiKeySecret, setTwilioApiKeySecret] = useState(businessData.twilioApiKeySecret || '');
   const [twilioPhoneNumber, setTwilioPhoneNumber] = useState(businessData.twilioPhoneNumber || '');
-  
+
   const [saving, setSaving] = useState(false);
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-    if (!name || !ownerName) {
-      alert("Company Name and Owner Name are required.");
-      return;
-    }
-
     setSaving(true);
     try {
       const userDocRef = doc(db, 'users', userId);
@@ -64,10 +59,10 @@ export default function SettingsManager({ businessData, userId, addNotification 
         location,
         website,
         targetAudience,
+        themePreset,
         ownerName,
         ownerEmail,
         ownerPhone,
-        themePreset,
         employees
       };
 
@@ -75,7 +70,7 @@ export default function SettingsManager({ businessData, userId, addNotification 
         businessData: updatedData
       });
 
-      addNotification("Settings: Business profile and team directory updated successfully.", "system");
+      addNotification("Profile: Business settings saved successfully.", "system");
       alert("Settings saved successfully!");
     } catch (err) {
       console.error(err);
@@ -140,7 +135,7 @@ export default function SettingsManager({ businessData, userId, addNotification 
 
     try {
       addNotification("Simulating missed call from " + testFrom + "...", "system");
-      const res = await fetch(`/api/twilio-missed-call?uid=${userId}`, {
+      const res = await fetch(missedCallHook, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -170,7 +165,7 @@ export default function SettingsManager({ businessData, userId, addNotification 
       <div>
         <h2 style={{ fontSize: '1.5rem', marginBottom: '4px' }}>Settings & Integrations</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-          Manage your business metadata, staff members, API keys, and external phone connections.
+          Manage your business metadata, staff members, and custom presets.
         </p>
       </div>
 
@@ -178,8 +173,10 @@ export default function SettingsManager({ businessData, userId, addNotification 
       <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '1px' }}>
         {[
           { id: 'profile', label: '🏢 Profile & Team' },
-          { id: 'integrations', label: '🔌 Twilio SMS Setup' },
-          { id: 'webhooks', label: '🔗 Webhook Settings' }
+          ...(userEmail === 'prometheonderrius@gmail.com' ? [
+            { id: 'integrations', label: '🔌 Twilio SMS Setup' },
+            { id: 'webhooks', label: '🔗 Webhook Settings' }
+          ] : [])
         ].map(tab => (
           <button
             key={tab.id}
@@ -299,7 +296,7 @@ export default function SettingsManager({ businessData, userId, addNotification 
         )}
 
         {/* Panel 2: Integrations */}
-        {activeSubTab === 'integrations' && (
+        {activeSubTab === 'integrations' && userEmail === 'prometheonderrius@gmail.com' && (
           <form onSubmit={handleSaveIntegrations} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.05) 0%, transparent 100%)', padding: '16px', borderRadius: '8px', border: '1px solid var(--accent-cyan-glow)' }}>
               <h4 style={{ color: 'var(--accent-cyan)', fontSize: '0.95rem', marginBottom: '6px' }}>Twilio SMS integration</h4>
@@ -339,7 +336,7 @@ export default function SettingsManager({ businessData, userId, addNotification 
         )}
 
         {/* Panel 3: Webhooks */}
-        {activeSubTab === 'webhooks' && (
+        {activeSubTab === 'webhooks' && userEmail === 'prometheonderrius@gmail.com' && (
           <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <h3 style={{ fontSize: '1.1rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '8px' }}>Active Webhook Targets</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', lineHeight: '1.4' }}>
