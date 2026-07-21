@@ -428,6 +428,18 @@ export default function App() {
   };
 
   const isFeatureLocked = (requiredTier) => {
+    const isLocal = [
+      'Home Services (HVAC, Plumbing, Electrical)',
+      'Local Retail & Boutique Shops',
+      'Restaurants & Cafes',
+      'Health & Wellness (Gyms, Spa, Clinics)'
+    ].includes(businessData?.category);
+
+    // If local service, AI Operations (requires 'pro' typically) is unlocked immediately
+    if (isLocal && requiredTier === 'pro') {
+      return false;
+    }
+
     const tiers = ['free', 'starter', 'pro', 'enterprise'];
     return tiers.indexOf(selectedTier) < tiers.indexOf(requiredTier);
   };
@@ -595,6 +607,7 @@ export default function App() {
           await updateDoc(doc(db, 'users', user.uid), { selectedTier: tier });
         }}
         businessName={businessData.name}
+        businessCategory={businessData.category}
         onToggleRecorder={() => setShowRecorder(!showRecorder)}
         mobileOpen={mobileSidebarOpen}
         onClose={() => setMobileSidebarOpen(false)}
