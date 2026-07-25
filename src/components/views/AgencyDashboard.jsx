@@ -72,19 +72,19 @@ export default function AgencyDashboard({
     }
   };
 
-  // Fetch API Settings from /system/adminSettings
+  // Fetch API Settings via serverless API
   const fetchAdminSettings = async () => {
     try {
-      const adminDoc = await getDoc(doc(db, 'system', 'adminSettings'));
-      if (adminDoc.exists()) {
-        const data = adminDoc.data();
+      const res = await fetch('/api/get-admin-settings');
+      if (res.ok) {
+        const data = await res.json();
         setTwilioAccountSid(data.twilioAccountSid || '');
         setTwilioApiKeySid(data.twilioApiKeySid || '');
         setTwilioApiKeySecret(data.twilioApiKeySecret || '');
         setTwilioPhoneNumber(data.twilioPhoneNumber || '');
       }
     } catch (err) {
-      console.error("Error fetching admin settings:", err);
+      console.error("Error fetching admin settings via API:", err);
     }
   };
 
@@ -156,19 +156,28 @@ export default function AgencyDashboard({
     }
   }, [db]);
 
-  // Save admin integration keys
+  // Save admin integration keys via backend API (bypasses Firestore client rule restrictions)
   const handleSaveAdminSettings = async (e) => {
     e.preventDefault();
     setSavingSettings(true);
     try {
-      await setDoc(doc(db, 'system', 'adminSettings'), {
-        twilioAccountSid,
-        twilioApiKeySid,
-        twilioApiKeySecret,
-        twilioPhoneNumber,
-        updatedAt: Date.now()
+      const res = await fetch('/api/save-admin-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          twilioAccountSid,
+          twilioApiKeySid,
+          twilioApiKeySecret,
+          twilioPhoneNumber
+        })
       });
-      alert("Provider settings saved successfully to secure storage!");
+
+      const data = await res.json();
+      if (res.ok) {
+        alert("Provider settings saved successfully to secure storage!");
+      } else {
+        alert("Failed to save settings: " + (data.error || data.message || 'Unknown error'));
+      }
     } catch (err) {
       console.error(err);
       alert("Failed to save provider settings: " + err.message);
