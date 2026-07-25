@@ -156,7 +156,7 @@ export default function AgencyDashboard({
     }
   }, [db]);
 
-  // Save admin integration keys via backend API (bypasses Firestore client rule restrictions)
+  // Save admin integration keys via backend API
   const handleSaveAdminSettings = async (e) => {
     e.preventDefault();
     setSavingSettings(true);
@@ -172,11 +172,14 @@ export default function AgencyDashboard({
         })
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data = {};
+      try { data = JSON.parse(text); } catch (e) {}
+
       if (res.ok) {
         alert("Provider settings saved successfully to secure storage!");
       } else {
-        alert("Failed to save settings: " + (data.error || data.message || 'Unknown error'));
+        alert("Failed to save settings: " + (data.error || data.message || text || 'Unknown error'));
       }
     } catch (err) {
       console.error(err);
