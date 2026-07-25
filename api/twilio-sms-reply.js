@@ -1,3 +1,5 @@
+import { dbAdmin } from './_utils/gcp.js';
+
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -167,7 +169,19 @@ Draft a professional, friendly, and helpful text response to the customer. Keep 
       body: JSON.stringify(notifyBody)
     });
 
-    // 7. Return standard TwiML XML reply response to Twilio
+    // 7. Log to admin diagnostic logger
+    try {
+      await dbAdmin.collection('apiLogs').add({
+        timestamp: Date.now(),
+        apiName: '/api/twilio-sms-reply',
+        status: 'success',
+        details: `Auto-replied to client ${From} for UID ${uid}.`
+      });
+    } catch (logErr) {
+      console.warn('Failed to write to apiLogs:', logErr);
+    }
+
+    // 8. Return standard TwiML XML reply response to Twilio
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Message>${replyText}</Message>

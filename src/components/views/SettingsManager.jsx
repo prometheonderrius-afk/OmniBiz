@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
+import { doc, updateDoc, collection, addDoc, onSnapshot, query, orderBy, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 
 const categories = [
@@ -21,7 +21,7 @@ const presets = {
 };
 
 export default function SettingsManager({ businessData, userId, userEmail, addNotification }) {
-  const [activeSubTab, setActiveSubTab] = useState('profile'); // 'profile', 'integrations', 'webhooks'
+  const [activeSubTab, setActiveSubTab] = useState('profile'); // 'profile', 'chat', 'integrations', 'webhooks'
   
   // Profile Forms
   const [name, setName] = useState(businessData.name || '');
@@ -47,13 +47,80 @@ export default function SettingsManager({ businessData, userId, userEmail, addNo
 
   const [saving, setSaving] = useState(false);
 
+  // Chat with Admin State
+  const [chatMessages, setChatMessages] = useState([]);
+  const [newMessageText, setNewMessageText] = useState('');
+  const [sendingMsg, setSendingMsg] = useState(false);
+
+  // Listen to Admin Chat messages
+  useEffect(() => {
+    if (!userId || activeSubTab !== 'chat') return;
+
+    const messagesRef = collection(db, 'adminChats', userId, 'messages');
+    const q = query(messagesRef, orderBy('timestamp', 'asc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const msgs = [];
+      snapshot.forEach(docSnap => {
+        msgs.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setChatMessages(msgs);
+
+      // Clear unread flag for client
+      if (msgs.length > 0) {
+        setDoc(doc(db, 'adminChats', userId), { unreadByClient: false }, { merge: true }).catch(() => {});
+      }
+    });
+
+    return () => unsubscribe();
+  }, [userId, activeSubTab]);
+
+  const handleSendAdminMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessageText.trim() || sendingMsg) return;
+
+    setSendingMsg(true);
+    const msgText = newMessageText.trim();
+    setNewMessageText('');
+
+    try {
+      // 1. Add message document to subcollection
+      await addDoc(collection(db, 'adminChats', userId, 'messages'), {
+        senderEmail: userEmail || 'Client',
+        senderRole: 'client',
+        text: msgText,
+        timestamp: Date.now()
+      });
+
+      // 2. Update parent conversation metadata
+      await setDoc(doc(db, 'adminChats', userId), {
+        clientId: userId,
+        clientEmail: userEmail || 'Client',
+        businessName: name || 'OmniBiz Client',
+        lastMessage: msgText,
+        lastMessageTime: Date.now(),
+        unreadByAdmin: true,
+        unreadByClient: false
+      }, { merge: true });
+
+      if (addNotification) {
+        addNotification("Message sent to OmniBiz Admin", "system");
+      }
+    } catch (err) {
+      console.error("Error sending message to admin:", err);
+      alert("Failed to send message: " + err.message);
+    } finally {
+      setSendingMsg(false);
+    }
+  };
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSaving(true);
+
     try {
-      const userDocRef = doc(db, 'users', userId);
-      const updatedData = {
-        ...businessData,
+      const userRef = doc(db, 'users', userId);
+      const updatedBusinessData = {
         name,
         category,
         location,
@@ -63,90 +130,61 @@ export default function SettingsManager({ businessData, userId, userEmail, addNo
         ownerName,
         ownerEmail,
         ownerPhone,
-        employees
-      };
-
-      await updateDoc(userDocRef, {
-        businessData: updatedData
-      });
-
-      addNotification("Profile: Business settings saved successfully.", "system");
-      alert("Settings saved successfully!");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to save profile: " + err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSaveIntegrations = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const userDocRef = doc(db, 'users', userId);
-      const updatedData = {
-        ...businessData,
+        employees,
         twilioAccountSid,
         twilioApiKeySid,
         twilioApiKeySecret,
         twilioPhoneNumber
       };
 
-      await updateDoc(userDocRef, {
-        businessData: updatedData
+      await updateDoc(userRef, {
+        businessData: updatedBusinessData,
+        onboardingComplete: true
       });
 
-      addNotification("Integrations: Live Twilio API keys updated successfully.", "system");
-      alert("Integrations saved successfully!");
+      addNotification("Settings and profile updated successfully!", "system");
+      alert("Settings saved!");
     } catch (err) {
-      console.error(err);
-      alert("Failed to save credentials: " + err.message);
+      console.error("Save error:", err);
+      alert("Failed to save settings: " + err.message);
     } finally {
       setSaving(false);
     }
   };
 
   const handleAddEmployee = () => {
-    if (!newEmpName.trim()) {
-      alert("Employee name is required.");
-      return;
-    }
-    setEmployees(prev => [...prev, { name: newEmpName.trim(), role: newEmpRole.trim() || 'Staff' }]);
+    if (!newEmpName.trim() || !newEmpRole.trim()) return;
+    setEmployees([...employees, { name: newEmpName.trim(), role: newEmpRole.trim() }]);
     setNewEmpName('');
     setNewEmpRole('');
   };
 
-  const handleRemoveEmployee = (idx) => {
-    setEmployees(prev => prev.filter((_, i) => i !== idx));
+  const handleRemoveEmployee = (index) => {
+    setEmployees(employees.filter((_, i) => i !== index));
   };
 
-  const webhookUrlBase = window.location.origin;
-  const missedCallHook = `${webhookUrlBase}/api/twilio-missed-call?uid=${userId}`;
-  const smsHook = `${webhookUrlBase}/api/twilio-sms-reply?uid=${userId}`;
+  // Webhooks absolute URIs
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://omnibiz-ai.me';
+  const missedCallHook = `${origin}/api/twilio-missed-call?uid=${userId}`;
+  const smsHook = `${origin}/api/twilio-sms-reply?uid=${userId}`;
 
   const handleTestTwilioWebhook = async () => {
-    if (!twilioAccountSid || !twilioPhoneNumber) {
-      alert("Please save your Twilio settings first.");
-      return;
-    }
-    const testFrom = prompt("Enter a phone number to simulate a missed call from (e.g. +15551234567):");
+    const testFrom = prompt("Enter your real personal phone number (e.g. +18005550199) to test live SMS text-back:", "+1");
     if (!testFrom) return;
 
     try {
-      addNotification("Simulating missed call from " + testFrom + "...", "system");
-      const res = await fetch(missedCallHook, {
+      const response = await fetch('/api/twilio-missed-call?uid=' + userId, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           From: testFrom,
-          To: twilioPhoneNumber,
           CallStatus: 'no-answer',
-          CallSid: 'CA_test_call_sid_123'
+          CallSid: 'TEST_CALL_' + Date.now()
         })
       });
-      const data = await res.json();
-      if (res.ok) {
+
+      const data = await response.json();
+      if (response.ok) {
         alert("Success! The AI drafted and sent via Twilio: " + data.textback);
         addNotification("Twilio textback successfully sent to " + testFrom, "system");
       } else {
@@ -165,7 +203,7 @@ export default function SettingsManager({ businessData, userId, userEmail, addNo
       <div>
         <h2 style={{ fontSize: '1.5rem', marginBottom: '4px' }}>Settings & Integrations</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-          Manage your business metadata, staff members, and custom presets.
+          Manage your business metadata, staff members, and connect with OmniBiz Admin support.
         </p>
       </div>
 
@@ -173,6 +211,7 @@ export default function SettingsManager({ businessData, userId, userEmail, addNo
       <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '1px' }}>
         {[
           { id: 'profile', label: '🏢 Profile & Team' },
+          { id: 'chat', label: '💬 Support & Admin Chat' },
           ...(userEmail === 'prometheonderrius@gmail.com' ? [
             { id: 'integrations', label: '🔌 Twilio SMS Setup' },
             { id: 'webhooks', label: '🔗 Webhook Settings' }
@@ -197,196 +236,210 @@ export default function SettingsManager({ businessData, userId, userEmail, addNo
         ))}
       </div>
 
-      {/* Panels */}
-      <div className="animate-fade-in">
-        
-        {/* Panel 1: Profile & Team */}
+      {/* SubTab Panels */}
+      <div>
         {activeSubTab === 'profile' && (
-          <form onSubmit={handleSaveProfile} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <h3 style={{ fontSize: '1.1rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '8px' }}>Business Metadata</h3>
+          <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Company Name *</label>
-                <input type="text" className="glass-input" value={name} onChange={e => setName(e.target.value)} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Business Category</label>
-                <select className="glass-input glass-select" value={category} onChange={e => setCategory(e.target.value)}>
-                  {categories.map((cat, i) => (
-                    <option key={i} value={cat} style={{ background: '#0a0e1a' }}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Location (City, State)</label>
-                <input type="text" className="glass-input" value={location} onChange={e => setLocation(e.target.value)} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Website URL</label>
-                <input type="text" className="glass-input" value={website} onChange={e => setWebsite(e.target.value)} />
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Target Audience Description</label>
-                <textarea className="glass-input" rows="3" style={{ resize: 'none' }} value={targetAudience} onChange={e => setTargetAudience(e.target.value)} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Aesthetic Color Preset</label>
-                <select className="glass-input glass-select" value={themePreset} onChange={e => setThemePreset(e.target.value)}>
-                  {Object.keys(presets).map(k => (
-                    <option key={k} value={k} style={{ background: '#0a0e1a' }}>{presets[k].name} ({presets[k].desc})</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <h3 style={{ fontSize: '1.1rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '8px', marginTop: '16px' }}>Owner Details</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Owner Full Name *</label>
-                <input type="text" className="glass-input" value={ownerName} onChange={e => setOwnerName(e.target.value)} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Owner Email</label>
-                <input type="email" className="glass-input" value={ownerEmail} onChange={e => setOwnerEmail(e.target.value)} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Owner Phone</label>
-                <input type="text" className="glass-input" value={ownerPhone} onChange={e => setOwnerPhone(e.target.value)} />
-              </div>
-            </div>
-
-            <h3 style={{ fontSize: '1.1rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '8px', marginTop: '16px' }}>Staff & Team Directory</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
-                <div style={{ flex: 1 }}>
-                  <input type="text" className="glass-input" placeholder="Staff Name" value={newEmpName} onChange={e => setNewEmpName(e.target.value)} style={{ padding: '8px 12px', fontSize: '0.85rem' }} />
+            {/* General Business Info */}
+            <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-glass)', paddingBottom: '8px' }}>Business Profile</h3>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Company Name *</label>
+                  <input type="text" className="glass-input" value={name} onChange={e => setName(e.target.value)} required />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <input type="text" className="glass-input" placeholder="Role (e.g. Technician)" value={newEmpRole} onChange={e => setNewEmpRole(e.target.value)} style={{ padding: '8px 12px', fontSize: '0.85rem' }} />
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Industry Category</label>
+                  <select className="glass-input" value={category} onChange={e => setCategory(e.target.value)}>
+                    {categories.map(c => <option key={c} value={c} style={{ background: '#090d16' }}>{c}</option>)}
+                  </select>
                 </div>
-                <button type="button" className="glass-button" onClick={handleAddEmployee} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Add Team Member</button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>City, State / HQ Location</label>
+                  <input type="text" className="glass-input" value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Austin, TX" />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Website URL</label>
+                  <input type="url" className="glass-input" value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://example.com" />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Target Customer Audience & Ideal Client Description</label>
+                <textarea className="glass-input" style={{ minHeight: '60px' }} value={targetAudience} onChange={e => setTargetAudience(e.target.value)} placeholder="Describe who your business serves..." />
+              </div>
+            </div>
+
+            {/* Owner & Contact Info */}
+            <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-glass)', paddingBottom: '8px' }}>Owner & Key Contact</h3>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Owner / Manager Name</label>
+                  <input type="text" className="glass-input" value={ownerName} onChange={e => setOwnerName(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Direct Email</label>
+                  <input type="email" className="glass-input" value={ownerEmail} onChange={e => setOwnerEmail(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Direct Phone Number</label>
+                  <input type="tel" className="glass-input" value={ownerPhone} onChange={e => setOwnerPhone(e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            {/* Staff & Employees */}
+            <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-glass)', paddingBottom: '8px' }}>Staff & Team Roster</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: 0 }}>
+                Employees listed here are automatically made available to the AI Assistant for scheduling, dispatch, and customer answers.
+              </p>
+
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <input type="text" className="glass-input" placeholder="Staff Name (e.g. Sarah Jenkins)" value={newEmpName} onChange={e => setNewEmpName(e.target.value)} />
+                <input type="text" className="glass-input" placeholder="Role (e.g. Senior Electrician)" value={newEmpRole} onChange={e => setNewEmpRole(e.target.value)} />
+                <button type="button" className="glass-button glass-button-secondary" style={{ whiteSpace: 'nowrap' }} onClick={handleAddEmployee}>
+                  + Add Member
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginTop: '8px' }}>
                 {employees.map((emp, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-glass)', padding: '8px 12px', borderRadius: '6px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>{emp.name}</span>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)' }}>{emp.role}</span>
+                  <div key={idx} style={{ padding: '12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px', border: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: '600', fontSize: '0.85rem' }}>{emp.name}</div>
+                      <div style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{emp.role}</div>
                     </div>
-                    <button type="button" onClick={() => handleRemoveEmployee(idx)} style={{ background: 'none', border: 'none', color: 'var(--accent-pink)', cursor: 'pointer', fontSize: '0.8rem' }}>Remove</button>
+                    <button type="button" onClick={() => handleRemoveEmployee(idx)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-pink)', cursor: 'pointer', fontSize: '0.8rem' }}>✕</button>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
-              <button type="submit" className="glass-button" disabled={saving}>
-                {saving ? 'Saving Profile...' : 'Save Settings'}
+            {/* Save Button */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="submit" className="glass-button" disabled={saving} style={{ padding: '12px 24px' }}>
+                {saving ? 'Updating Profile...' : 'Save Settings'}
               </button>
             </div>
           </form>
         )}
 
-        {/* Panel 2: Integrations */}
-        {activeSubTab === 'integrations' && userEmail === 'prometheonderrius@gmail.com' && (
-          <form onSubmit={handleSaveIntegrations} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.05) 0%, transparent 100%)', padding: '16px', borderRadius: '8px', border: '1px solid var(--accent-cyan-glow)' }}>
-              <h4 style={{ color: 'var(--accent-cyan)', fontSize: '0.95rem', marginBottom: '6px' }}>Twilio SMS integration</h4>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', lineHeight: '1.4' }}>
-                Paste your Twilio API credentials below. When configured, simulated call alerts and dashboard responders will route real, live SMS texts using your Twilio number.
+        {/* Support & Admin Chat */}
+        {activeSubTab === 'chat' && (
+          <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', height: '550px' }}>
+            <div style={{ borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '1.2rem', margin: 0 }}>💬 Support & Admin Live Help</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '4px 0 0 0' }}>
+                Have questions about your plan, need custom feature extensions, or technical help? Chat directly with the OmniBiz platform administrator.
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Twilio Account SID (starts with AC)</label>
-                <input type="text" className="glass-input" placeholder="e.g. AC8749d21bc1e3e5bfa..." value={twilioAccountSid} onChange={e => setTwilioAccountSid(e.target.value)} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Twilio Phone Number (Sender phone number)</label>
-                <input type="text" className="glass-input" placeholder="e.g. +15405550199" value={twilioPhoneNumber} onChange={e => setTwilioPhoneNumber(e.target.value)} />
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Twilio API Key SID (starts with SK)</label>
-                <input type="text" className="glass-input" placeholder="e.g. SK2a0bc2951eb3c9d65189bf5b..." value={twilioApiKeySid} onChange={e => setTwilioApiKeySid(e.target.value)} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Twilio API Key Secret</label>
-                <input type="password" className="glass-input" placeholder="Enter API secret key" value={twilioApiKeySecret} onChange={e => setTwilioApiKeySecret(e.target.value)} />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
-              <button type="submit" className="glass-button" disabled={saving}>
-                {saving ? 'Saving Credentials...' : 'Save Twilio Setup'}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Panel 3: Webhooks */}
-        {activeSubTab === 'webhooks' && userEmail === 'prometheonderrius@gmail.com' && (
-          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <h3 style={{ fontSize: '1.1rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '8px' }}>Active Webhook Targets</h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', lineHeight: '1.4' }}>
-              Copy these webhook URLs and paste them into your Twilio phone number configuration settings to handle live customer call statuses and text messages.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--accent-purple)', fontWeight: '600', marginBottom: '6px' }}>Missed Call Webhook (Call Status Callback)</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input type="text" className="glass-input" readOnly value={missedCallHook} style={{ fontSize: '0.75rem', background: 'rgba(0,0,0,0.2)' }} onClick={e => e.target.select()} />
-                  <button className="glass-button glass-button-secondary" style={{ padding: '8px 14px', borderRadius: '4px', fontSize: '0.75rem' }} onClick={() => { navigator.clipboard.writeText(missedCallHook); alert("Copied Call status webhook!"); }}>Copy</button>
+            {/* Chat Messages Stream */}
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '8px', marginBottom: '16px' }}>
+              {chatMessages.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', margin: 'auto', fontSize: '0.85rem' }}>
+                  No messages yet. Send a message below to start a support conversation with the OmniBiz team!
                 </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--accent-cyan)', fontWeight: '600', marginBottom: '6px' }}>Incoming Customer SMS Webhook</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input type="text" className="glass-input" readOnly value={smsHook} style={{ fontSize: '0.75rem', background: 'rgba(0,0,0,0.2)' }} onClick={e => e.target.select()} />
-                  <button className="glass-button glass-button-secondary" style={{ padding: '8px 14px', borderRadius: '4px', fontSize: '0.75rem' }} onClick={() => { navigator.clipboard.writeText(smsHook); alert("Copied Message Webhook!"); }}>Copy</button>
-                </div>
-              </div>
+              ) : (
+                chatMessages.map((msg) => {
+                  const isClient = msg.senderRole === 'client';
+                  return (
+                    <div 
+                      key={msg.id}
+                      style={{
+                        alignSelf: isClient ? 'flex-end' : 'flex-start',
+                        maxWidth: '75%',
+                        background: isClient ? 'linear-gradient(135deg, var(--accent-purple) 0%, #6d28d9 100%)' : 'rgba(255,255,255,0.06)',
+                        border: isClient ? 'none' : '1px solid var(--border-glass)',
+                        padding: '12px 16px',
+                        borderRadius: isClient ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
+                        color: '#ffffff'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.7rem', opacity: 0.7, marginBottom: '4px', display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+                        <span>{isClient ? 'You' : 'OmniBiz Admin'}</span>
+                        <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <div style={{ fontSize: '0.9rem', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+                    </div>
+                  );
+                })
+              )}
             </div>
 
-            <div style={{ marginTop: '12px', padding: '16px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
-              <h4 style={{ fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: '8px' }}>🧪 Test Missed-Call AI Pipeline</h4>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '12px', lineHeight: '1.4' }}>
-                Simulate an incoming missed call right now. This will trigger your Vercel endpoint, draft a custom response using Vertex AI, and immediately dispatch a real SMS via your Twilio account to the number you specify. (Note: Run this on your live Vercel URL).
-              </p>
+            {/* Input Message Form */}
+            <form onSubmit={handleSendAdminMessage} style={{ display: 'flex', gap: '12px' }}>
+              <input 
+                type="text" 
+                className="glass-input" 
+                placeholder="Type a message to OmniBiz Admin..." 
+                value={newMessageText}
+                onChange={e => setNewMessageText(e.target.value)}
+                style={{ flex: 1 }}
+              />
               <button 
+                type="submit" 
                 className="glass-button" 
-                onClick={handleTestTwilioWebhook}
-                style={{ background: 'linear-gradient(135deg, var(--accent-purple) 0%, #ec4899 100%)', padding: '8px 16px', fontSize: '0.85rem' }}
+                disabled={sendingMsg || !newMessageText.trim()}
+                style={{ padding: '8px 20px', background: 'linear-gradient(135deg, var(--accent-purple) 0%, #6d28d9 100%)', border: 'none' }}
               >
-                Send Test Call Payload
+                {sendingMsg ? 'Sending...' : 'Send Message'}
               </button>
-            </div>
-
-            <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '16px', marginTop: '16px' }}>
-              <h4 style={{ fontSize: '0.95rem', color: 'var(--text-primary)', marginBottom: '12px' }}>🛠️ Step-by-Step Twilio Configuration Instructions</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                <div><strong>1. Active Twilio Number:</strong> Open the Twilio Console, go to <strong>Develop &gt; Phone Numbers &gt; Manage &gt; Active Numbers</strong>. Click on your active phone number.</div>
-                <div><strong>2. Connect Call Status (Missed-Call textback):</strong> Scroll down to the <strong>Voice &amp; Fax</strong> section. Look for the field labeled <strong>Call Status Callback</strong>. Paste the <em>Missed Call Webhook</em> URL there and select <strong>HTTP POST</strong> from the dropdown. Under status callbacks, make sure <em>no-answer</em> and <em>busy</em> are checked.</div>
-                <div><strong>3. Connect Incoming Messages (conversational replies):</strong> Scroll down to the <strong>Messaging</strong> section. Under "A Message Comes In", select <strong>Webhook</strong>, paste the <em>Incoming Customer SMS Webhook</em> URL, and select <strong>HTTP POST</strong>.</div>
-                <div><strong>4. Save:</strong> Click the <strong>Save</strong> button at the bottom of the Twilio number settings page. Your virtual receptionist is now live!</div>
-              </div>
-            </div>
+            </form>
           </div>
         )}
 
+        {/* Twilio Setup (Admin Only) */}
+        {activeSubTab === 'integrations' && userEmail === 'prometheonderrius@gmail.com' && (
+          <form onSubmit={handleSaveProfile} className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-glass)', paddingBottom: '8px' }}>Master Provider Keys</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Twilio Account SID</label>
+                <input type="text" className="glass-input" value={twilioAccountSid} onChange={e => setTwilioAccountSid(e.target.value)} placeholder="AC..." />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Twilio Master Phone Number</label>
+                <input type="text" className="glass-input" value={twilioPhoneNumber} onChange={e => setTwilioPhoneNumber(e.target.value)} placeholder="+18005550199" />
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="submit" className="glass-button">Save Configuration</button>
+            </div>
+          </form>
+        )}
+
+        {/* Webhooks (Admin Only) */}
+        {activeSubTab === 'webhooks' && userEmail === 'prometheonderrius@gmail.com' && (
+          <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-glass)', paddingBottom: '8px' }}>Serverless Webhook Endpoints</h3>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--accent-purple)', fontWeight: '600', marginBottom: '6px' }}>Missed Call Webhook</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input type="text" className="glass-input" readOnly value={missedCallHook} style={{ fontSize: '0.75rem' }} />
+                <button type="button" className="glass-button glass-button-secondary" onClick={() => navigator.clipboard.writeText(missedCallHook)}>Copy</button>
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--accent-cyan)', fontWeight: '600', marginBottom: '6px' }}>Incoming SMS Webhook</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input type="text" className="glass-input" readOnly value={smsHook} style={{ fontSize: '0.75rem' }} />
+                <button type="button" className="glass-button glass-button-secondary" onClick={() => navigator.clipboard.writeText(smsHook)}>Copy</button>
+              </div>
+            </div>
+            <button type="button" className="glass-button" onClick={handleTestTwilioWebhook} style={{ marginTop: '12px' }}>
+              Send Test Call Payload
+            </button>
+          </div>
+        )}
       </div>
 
     </div>

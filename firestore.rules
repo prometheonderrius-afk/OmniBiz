@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId} {
       allow get: if true;
-      allow list, write: if request.auth != null && request.auth.uid == userId;
+      allow list, write: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'prometheonderrius@gmail.com');
       
       // Explicitly allow public visitors to read & create web chat messages
       match /webChat/{msgId} {
@@ -11,15 +11,22 @@ service cloud.firestore {
         allow update, delete: if request.auth != null && request.auth.uid == userId;
       }
 
-      // Explicitly protect all other business subcollections (only owner can read/write)
-      match /leads/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
-      match /audits/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
-      match /emails/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
-      match /reviews/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
-      match /smsLog/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
-      match /campaigns/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
-      match /contracts/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
-      match /notifications/{docId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
+      // Explicitly protect all other business subcollections (only owner or admin can read/write)
+      match /leads/{docId} { allow read, write: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'prometheonderrius@gmail.com'); }
+      match /audits/{docId} { allow read, write: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'prometheonderrius@gmail.com'); }
+      match /emails/{docId} { allow read, write: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'prometheonderrius@gmail.com'); }
+      match /reviews/{docId} { allow read, write: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'prometheonderrius@gmail.com'); }
+      match /smsLog/{docId} { allow read, write: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'prometheonderrius@gmail.com'); }
+      match /campaigns/{docId} { allow read, write: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'prometheonderrius@gmail.com'); }
+      match /contracts/{docId} { allow read, write: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'prometheonderrius@gmail.com'); }
+      match /notifications/{docId} { allow read, write: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'prometheonderrius@gmail.com'); }
+    }
+
+    match /adminChats/{chatId} {
+      allow read, write: if request.auth != null && (request.auth.uid == chatId || request.auth.token.email == 'prometheonderrius@gmail.com');
+      match /messages/{msgId} {
+        allow read, write: if request.auth != null && (request.auth.uid == chatId || request.auth.token.email == 'prometheonderrius@gmail.com');
+      }
     }
 
     match /system/adminSettings {
