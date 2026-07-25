@@ -75,7 +75,7 @@ export default function AgencyDashboard({
   // Fetch API Settings via serverless API
   const fetchAdminSettings = async () => {
     try {
-      const res = await fetch('/api/get-admin-settings');
+      const res = await fetch('/api/admin-settings');
       if (res.ok) {
         const data = await res.json();
         setTwilioAccountSid(data.twilioAccountSid || '');
@@ -161,7 +161,7 @@ export default function AgencyDashboard({
     e.preventDefault();
     setSavingSettings(true);
     try {
-      const res = await fetch('/api/save-admin-settings', {
+      const res = await fetch('/api/admin-settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
