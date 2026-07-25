@@ -384,11 +384,18 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Base Mobile Header styling (hidden on desktop) */
 .mobile-header {
-  display: none;
+  display: none !important;
 }
 
-/* Responsive Overrides */
-@media (max-width: 1024px) {
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  z-index: 10;
+}
+
+/* Mobile Dual-View Overrides (Phone Viewports <= 768px) */
+@media (max-width: 768px) {
   .dashboard-container {
     grid-template-columns: 1fr;
   }
@@ -425,12 +432,12 @@ h1, h2, h3, h4, h5, h6 {
   }
   
   .main-content {
-    padding: 20px;
+    padding: 16px;
     max-height: none;
     overflow-y: visible;
   }
   
-  /* Mobile Header */
+  /* Mobile Header topbar */
   .mobile-header {
     display: flex !important;
     align-items: center;
@@ -439,18 +446,17 @@ h1, h2, h3, h4, h5, h6 {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border-glass);
-    padding: 16px 20px;
+    padding: 14px 16px;
     position: sticky;
     top: 0;
     z-index: 900;
   }
   
-  /* Hide desktop header spacing if needed */
   .desktop-only-header {
     display: none !important;
   }
 
-  /* Grid Stackers */
+  /* Grid Stackers for small mobile screens */
   .grid-split-12-10,
   .grid-split-3-2,
   .grid-two-col,
@@ -458,22 +464,17 @@ h1, h2, h3, h4, h5, h6 {
     grid-template-columns: 1fr !important;
   }
 
-  /* Ensure card margins look good on small viewports */
   .glass-card {
-    padding: 20px !important;
+    padding: 16px !important;
   }
 
-  .stats-grid {
-    grid-template-columns: 1fr 1fr !important;
-  }
-}
-
-@media (max-width: 580px) {
   .stats-grid {
     grid-template-columns: 1fr !important;
   }
+}
 
+@media (max-width: 480px) {
   .onboarding-card {
-    padding: 20px !important;
+    padding: 16px !important;
   }
 }

@@ -183,12 +183,15 @@ export default function SettingsManager({ businessData, userId, userEmail, addNo
         })
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data = {};
+      try { data = JSON.parse(text); } catch (e) {}
+
       if (response.ok) {
-        alert("Success! The AI drafted and sent via Twilio: " + data.textback);
+        alert("Success! The AI drafted and sent via Twilio: " + (data.textback || 'Response dispatched'));
         addNotification("Twilio textback successfully sent to " + testFrom, "system");
       } else {
-        alert("Error testing webhook: " + (data.error || JSON.stringify(data)));
+        alert("Error testing webhook: " + (data.error || data.message || text || 'Unknown error'));
       }
     } catch (e) {
       console.error(e);

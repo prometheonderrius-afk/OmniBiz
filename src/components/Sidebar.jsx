@@ -65,10 +65,7 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
       padding: '24px 16px',
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'between',
-      height: '100vh',
-      position: 'sticky',
-      top: 0
+      justifyContent: 'space-between'
     }}>
       {/* Brand Header */}
       <div>

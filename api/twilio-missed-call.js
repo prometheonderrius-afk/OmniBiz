@@ -1,4 +1,4 @@
-import { dbAdmin, generateContentVertex } from './_utils/gcp.js';
+import { generateContentVertex } from './_utils/gcp.js';
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -15,7 +15,12 @@ export default async function handler(req, res) {
   }
 
   const { uid } = req.query;
-  const { From, CallStatus, CallSid } = req.body;
+  
+  let bodyData = req.body || {};
+  if (typeof bodyData === 'string') {
+    try { bodyData = JSON.parse(bodyData); } catch (e) {}
+  }
+  const { From, CallStatus, CallSid } = bodyData;
 
   if (!uid) {
     return res.status(400).json({ error: 'uid query parameter is required.' });
@@ -29,6 +34,12 @@ export default async function handler(req, res) {
     return res.status(200).json({ status: 'ignored', reason: 'call was not missed' });
   }
 
+  const projectId = "wacom-canvas";
+  const adminSettingsUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/system/adminSettings`;
+  const userDocUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`;
+  const smsLogUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/smsLog`;
+  const apiLogsUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/apiLogs`;
+
   try {
     // 1. Resolve Twilio Credentials (Vercel Env first, fallback to Firestore Secure adminSettings)
     let twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || '';
@@ -37,51 +48,64 @@ export default async function handler(req, res) {
     let twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER || '';
 
     if (!twilioAccountSid) {
-      const adminDoc = await dbAdmin.collection('system').doc('adminSettings').get();
-      if (adminDoc.exists) {
-        const adminData = adminDoc.data();
-        twilioAccountSid = adminData.twilioAccountSid || '';
-        twilioApiKeySid = adminData.twilioApiKeySid || '';
-        twilioApiKeySecret = adminData.twilioApiKeySecret || '';
-        twilioPhoneNumber = adminData.twilioPhoneNumber || '';
+      try {
+        const adminRes = await fetch(adminSettingsUrl);
+        if (adminRes.ok) {
+          const adminDoc = await adminRes.json();
+          const fields = adminDoc.fields || {};
+          twilioAccountSid = fields.twilioAccountSid?.stringValue || '';
+          twilioApiKeySid = fields.twilioApiKeySid?.stringValue || '';
+          twilioApiKeySecret = fields.twilioApiKeySecret?.stringValue || '';
+          twilioPhoneNumber = fields.twilioPhoneNumber?.stringValue || '';
+        }
+      } catch (adminErr) {
+        console.warn("Failed reading adminSettings from REST API:", adminErr);
       }
     }
 
     if (!twilioAccountSid || !twilioApiKeySid || !twilioApiKeySecret || !twilioPhoneNumber) {
-      await dbAdmin.collection('apiLogs').add({
-        timestamp: Date.now(),
-        apiName: '/api/twilio-missed-call',
-        status: 'failed',
-        error: 'Missing Twilio Configuration. Configure keys in Admin Settings.'
+      return res.status(400).json({ 
+        error: 'Twilio credentials not configured.',
+        message: 'Please set your master provider keys in the Admin Settings tab.' 
       });
-      return res.status(400).json({ error: 'Twilio credentials not configured in settings.' });
     }
 
-    // 2. Fetch user business profile using Firebase Admin SDK
-    const userRef = dbAdmin.collection('users').doc(uid);
-    const userDoc = await userRef.get();
-    
-    if (!userDoc.exists) {
-      await dbAdmin.collection('apiLogs').add({
-        timestamp: Date.now(),
-        apiName: '/api/twilio-missed-call',
-        status: 'failed',
-        error: `User profile with UID ${uid} not found.`
-      });
-      return res.status(404).json({ error: 'User profile not found.' });
+    // 2. Fetch user business profile using Firestore REST API
+    let businessData = {};
+    try {
+      const userRes = await fetch(userDocUrl);
+      if (userRes.ok) {
+        const userDoc = await userRes.json();
+        const bFields = userDoc.fields?.businessData?.mapValue?.fields || {};
+        businessData = {
+          name: bFields.name?.stringValue || 'our company',
+          category: bFields.category?.stringValue || 'Local Business',
+          ownerName: bFields.ownerName?.stringValue || 'Owner',
+          employees: bFields.employees?.arrayValue?.values?.map(v => ({
+            name: v.mapValue?.fields?.name?.stringValue || '',
+            role: v.mapValue?.fields?.role?.stringValue || ''
+          })) || []
+        };
+      }
+    } catch (userErr) {
+      console.warn("User profile lookup failed:", userErr);
     }
-
-    const userData = userDoc.data();
-    const businessData = userData.businessData || {};
 
     // 3. Log the missed call event to Firestore smsLog
-    const smsLogRef = userRef.collection('smsLog');
-    await smsLogRef.add({
-      sender: 'Client',
-      text: `📞 Missed Call from ${From || 'Unknown Caller'}`,
-      isUser: false,
-      createdAt: Date.now()
-    });
+    try {
+      await fetch(smsLogUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            sender: { stringValue: 'Client' },
+            text: { stringValue: `📞 Missed Call from ${From || 'Unknown Caller'}` },
+            isUser: { booleanValue: false },
+            createdAt: { integerValue: Date.now().toString() }
+          }
+        })
+      });
+    } catch (logErr) {}
 
     // 4. Run Vertex AI Gemini to formulate a short missed-call reply
     let draftText = `Hi there! Sorry we missed your call. This is the AI assistant for ${businessData.name || 'our company'}. How can we help you today?`;
@@ -94,9 +118,7 @@ export default async function handler(req, res) {
 Owner name: "${businessData.ownerName || 'Owner'}".
 Active Staff: ${staffString}.`;
 
-      // Use GCP Vertex AI to generate content securely using their credits
       const output = await generateContentVertex(prompt, systemInstruction, { maxTokens: 100, temperature: 0.7 });
-      
       if (output) {
         draftText = output.trim();
       }
@@ -104,7 +126,7 @@ Active Staff: ${staffString}.`;
       console.warn('Vertex AI prompt generation failed. Using default template.', geminiErr);
     }
 
-    // 5. Send the SMS using Twilio
+    // 5. Send the SMS using Twilio REST API
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
     const params = new URLSearchParams();
     params.append('From', twilioPhoneNumber);
@@ -122,53 +144,50 @@ Active Staff: ${staffString}.`;
       body: params.toString()
     });
 
+    const twilioResult = await twilioResponse.json().catch(() => ({}));
+
     if (twilioResponse.ok) {
-      // Save the outbound textback to Firestore smsLog
-      await smsLogRef.add({
-        sender: 'OmniBiz AI (Auto)',
-        text: draftText,
-        isUser: true,
-        createdAt: Date.now()
-      });
+      // Save outbound textback to Firestore smsLog
+      try {
+        await fetch(smsLogUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fields: {
+              sender: { stringValue: 'OmniBiz AI (Auto)' },
+              text: { stringValue: draftText },
+              isUser: { booleanValue: true },
+              createdAt: { integerValue: Date.now().toString() }
+            }
+          })
+        });
 
-      // Write system notification
-      await userRef.collection('notifications').add({
-        text: `Live Call Callback: Missed call textback sent to ${From}.`,
-        type: 'callback',
-        createdAt: Date.now()
-      });
+        // Write telemetry log
+        await fetch(apiLogsUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fields: {
+              timestamp: { integerValue: Date.now().toString() },
+              apiName: { stringValue: '/api/twilio-missed-call' },
+              status: { stringValue: 'success' },
+              details: { stringValue: `Missed call auto-reply sent to ${From} for client ${businessData.name || uid}.` }
+            }
+          })
+        });
+      } catch (e) {}
 
-      // Log success in diagnostic logger
-      await dbAdmin.collection('apiLogs').add({
-        timestamp: Date.now(),
-        apiName: '/api/twilio-missed-call',
-        status: 'success',
-        details: `Missed call auto-reply sent to ${From} for client ${businessData.name || uid}.`
-      });
+      return res.status(200).json({ success: true, textback: draftText });
     } else {
-      const twilioError = await twilioResponse.json().catch(() => ({}));
-      await dbAdmin.collection('apiLogs').add({
-        timestamp: Date.now(),
-        apiName: '/api/twilio-missed-call',
-        status: 'failed',
-        error: twilioError.message || `Twilio API returned status ${twilioResponse.status}`
+      console.error("Twilio API error:", twilioResult);
+      return res.status(502).json({ 
+        error: 'Twilio API Error', 
+        message: twilioResult.message || 'Failed to dispatch SMS through Twilio.' 
       });
     }
-
-    return res.status(200).json({ success: true, textback: draftText });
 
   } catch (error) {
     console.error('Missed call callback error:', error);
-    try {
-      await dbAdmin.collection('apiLogs').add({
-        timestamp: Date.now(),
-        apiName: '/api/twilio-missed-call',
-        status: 'failed',
-        error: error.message || 'Internal Server Error'
-      });
-    } catch (e) {
-      console.error("Logger writing crash:", e);
-    }
     return res.status(500).json({ error: 'Internal server error', message: error.message });
   }
 }
