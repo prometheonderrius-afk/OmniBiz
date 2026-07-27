@@ -28,6 +28,9 @@ import AdManager from './components/views/AdManager';
 import ContractManager from './components/views/ContractManager';
 import BillingManager from './components/views/BillingManager';
 import SettingsManager from './components/views/SettingsManager';
+import PosManager from './components/views/PosManager';
+import PayrollManager from './components/views/PayrollManager';
+import InventoryManager from './components/views/InventoryManager';
 
 import ShowcaseRecorder from './components/ShowcaseRecorder';
 
@@ -608,6 +611,7 @@ export default function App() {
         }}
         businessName={businessData.name}
         businessCategory={businessData.category}
+        userEmail={user?.email}
         onToggleRecorder={() => setShowRecorder(!showRecorder)}
         mobileOpen={mobileSidebarOpen}
         onClose={() => setMobileSidebarOpen(false)}
@@ -701,6 +705,28 @@ export default function App() {
                     }
                   }}
                   isFeatureLocked={isFeatureLocked}
+                />
+              );
+            case 'pos':
+              return (
+                <PosManager
+                  businessData={businessData}
+                  addNotification={addNotification}
+                  selectedTier={selectedTier}
+                />
+              );
+            case 'inventory':
+              return (
+                <InventoryManager
+                  businessData={businessData}
+                  addNotification={addNotification}
+                />
+              );
+            case 'payroll':
+              return (
+                <PayrollManager
+                  businessData={businessData}
+                  addNotification={addNotification}
                 />
               );
             case 'seo':

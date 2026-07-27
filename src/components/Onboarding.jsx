@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 
 const categories = [
-  'Home Services (HVAC, Plumbing, Electrical)',
-  'Local Retail & Boutique Shops',
-  'Restaurants & Cafes',
-  'Professional Services (Legal, Accounting, Agency)',
-  'Health & Wellness (Gyms, Spa, Clinics)',
-  'SaaS & Digital Products'
+  'Plumbing, HVAC & Electrical Contracting',
+  'Auto Repair, Maintenance & Towing',
+  'Handyman, Construction & Remodeling',
+  'Restaurants, Cafes & Food Trucks',
+  'Fashion, Boutique & Retail Shops',
+  'Gas Station & Convenience Store',
+  'Tech Startup & SaaS Application',
+  'Professional Services (Legal, Financial, Consulting)'
 ];
 
 const goals = [
@@ -63,12 +65,12 @@ const presets = {
 };
 
 const getThemePresetForCategory = (cat) => {
-  if (cat.includes('Home Services')) return 'rugged_services';
-  if (cat.includes('Retail')) return 'rose_boutique';
-  if (cat.includes('Restaurants')) return 'warm_cafe';
-  if (cat.includes('Professional')) return 'navy_corporate';
-  if (cat.includes('Health')) return 'ocean_wellness';
-  return 'cyber_saas';
+  if (cat.includes('Plumbing') || cat.includes('Auto') || cat.includes('Handyman')) return 'rugged_services';
+  if (cat.includes('Fashion') || cat.includes('Boutique') || cat.includes('Retail')) return 'rose_boutique';
+  if (cat.includes('Restaurants') || cat.includes('Cafes')) return 'warm_cafe';
+  if (cat.includes('Gas Station') || cat.includes('Professional')) return 'navy_corporate';
+  if (cat.includes('Tech') || cat.includes('SaaS')) return 'cyber_saas';
+  return 'rugged_services';
 };
 
 export default function Onboarding({ onComplete }) {

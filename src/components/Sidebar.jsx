@@ -1,7 +1,16 @@
-export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSelectedTier, businessName, businessCategory, onToggleRecorder, mobileOpen, onClose }) {
+export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSelectedTier, businessName, businessCategory, userEmail, onToggleRecorder, mobileOpen, onClose }) {
   const menuItems = [
     { id: 'overview', label: 'Command Center', icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    )},
+    { id: 'pos', label: 'POS & Point of Sale', icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+    )},
+    { id: 'inventory', label: 'Inventory & Stock', icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+    )},
+    { id: 'payroll', label: 'Payroll & Timecards', icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     )},
     { id: 'seo', label: 'SEO & Visibility', icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
@@ -26,20 +35,7 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
     )}
   ];
 
-  const isLocalService = [
-    'Home Services (HVAC, Plumbing, Electrical)',
-    'Local Retail & Boutique Shops',
-    'Restaurants & Cafes',
-    'Health & Wellness (Gyms, Spa, Clinics)'
-  ].includes(businessCategory);
-
-  const filteredMenuItems = menuItems.filter(item => {
-    if (isLocalService) {
-      // Local hands-on operations don't need white collar analytical tools
-      return !['seo', 'competitors', 'ads', 'contracts'].includes(item.id);
-    }
-    return true;
-  });
+  const isAdminOwner = userEmail === 'prometheonderrius@gmail.com';
 
   const getTierBadgeClass = (tier) => {
     switch (tier) {
@@ -128,7 +124,7 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
 
         {/* Menu Navigation */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {filteredMenuItems.map(item => {
+          {menuItems.map(item => {
             const isActive = activeTab === item.id;
             return (
               <button
@@ -193,9 +189,11 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
         gap: '12px'
       }}>
         <div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>CURRENT PLAN:</div>
-          <span className={`badge ${getTierBadgeClass(selectedTier)}`} style={{ textTransform: 'uppercase', fontSize: '0.7rem', width: '100%', justifyContent: 'center' }}>
-            {selectedTier} plan
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
+            {isAdminOwner ? 'ACCOUNT TYPE:' : 'CURRENT PLAN:'}
+          </div>
+          <span className={`badge ${isAdminOwner ? 'badge-purple' : getTierBadgeClass(selectedTier)}`} style={{ textTransform: 'uppercase', fontSize: '0.7rem', width: '100%', justifyContent: 'center' }}>
+            {isAdminOwner ? '👑 Platform Master Admin' : `${selectedTier} plan`}
           </span>
         </div>
       </div>

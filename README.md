@@ -1,124 +1,180 @@
-# OmniBiz AI - Self-Building Automated Business Management System
+# 🚀 OmniBiz-AI — The Self-Building Business Operating System
+### Live Production TLD: [https://omnibiz-ai.me](https://omnibiz-ai.me)
 
-OmniBiz AI is a self-building, custom-tailored SaaS application designed to automate operations, marketing, customer support, and local visibility for small-to-large businesses. Upon onboarding, the application customizes its own visual appearance, layout styles, databases, and core AI behaviors based on key inputs provided by the user.
+**OmniBiz-AI** is an autonomous, self-building SaaS platform designed to liberate small-to-medium business (SMB) owners and blue-collar contractors (HVAC, Plumbing, Auto Repair, Handymen) from tedious paperwork, manual review management, lost phone leads, and unoptimized local marketing.
 
----
-
-## 🌟 Core System Vision
-
-When a new business client logs into OmniBiz:
-1. **Onboarding Questionnaire**: Captures company details, target audience, business goals, staff directories, and UI aesthetic preferences.
-2. **Self-Building UI**: Instantly compiles CSS tokens to alter the dashboard's design system (e.g., Cyber SaaS, Ocean Wellness, Rose Boutique).
-3. **Tailored AI Recepcionists**: Configures autonomous AI agents (via Gemini API) that know the company's employee names, service scope, and location, providing human-like website webchat and SMS interactions.
-4. **Subscription Tiering**: Operates under strict service capabilities tied to Free, Starter, and Professional plans.
+By combining autonomous **Gemini 2.5 Flash AI**, **Twilio Telephony & SMS**, **Resend Email**, **Firebase Firestore**, and a **Self-Building CSS Theme Engine**, OmniBiz-AI provides every business owner with an enterprise-level AI Executive Assistant that runs operations 24/7 on autopilot.
 
 ---
 
-## 🛠️ Technology Stack
+## 🌟 The Investor & Client Pitch
 
-- **Frontend**: React (Vite), CSS Custom Variables (Vanilla CSS design system), Lucide React (Icons).
-- **Backend**: Node.js Serverless Functions (designed for Vercel/Firebase Functions hosting).
-- **Database & Auth**: Google Firebase (Authentication, Cloud Firestore database logs, rule sets).
-- **Telephony & Messaging**: Twilio SMS REST API, Twilio status callbacks, TwiML messaging webhooks.
-- **Artificial Intelligence**: Gemini 2.5 Flash API (invoked for text generation, JSON structured campaigns, search grounding, and semantic reasoning).
+> *"Small business owners love their craft—whether fixing an HVAC compressor, crafting culinary dishes, or designing fashion lines—but they despise paperwork, writing invoices, managing local SEO, and losing missed phone calls. OmniBiz-AI turns every business owner into an enterprise-level CEO, automating 80%+ of administrative headaches from day one."*
+
+### Key Highlights
+- 🛠️ **Purpose-Built for Contractors & Local Trades**: 1-Tap Job Estimator, itemized quote dispatching via SMS, and digital signature capture eliminate paperwork pain.
+- 💬 **24/7 AI Receptionist & Missed-Call Responder**: Instant SMS textback on missed calls and live webchat receptionist configured with real employee directories.
+- ⭐ **AI Reputation & Review Response Engine**: Multi-platform (Google & Yelp) sentiment analyzer and instant tone-matched review responder.
+- 📍 **Hyper-Local SEO & Schema.org Generator**: 1-Click site audit and LocalBusiness JSON-LD microdata builder for top Google Maps positioning.
+- 🎨 **Self-Building Theme Engine**: Onboarding automatically re-configures the app's visual identity, preset templates, and AI prompts across 8 core industry verticals.
+
+---
+
+## 🏗️ System Topology & Flow Diagram
+
+```mermaid
+flowchart TD
+    subgraph Users ["👥 End Users & Clients"]
+        Contractor["🔧 Contractor / Trade Owner"]
+        SMB["🏬 SMB Owner / CEO"]
+        Customer["📱 Business Customer / Lead"]
+    end
+
+    subgraph Platform ["🌐 OmniBiz-AI Platform (omnibiz-ai.me)"]
+        UI["React 19 + Vite Frontend SPA"]
+        ThemeEngine["🎨 Dynamic CSS Token Engine"]
+        Firestore["🔥 Firebase Firestore Real-Time DB"]
+    end
+
+    subgraph Serverless ["⚡ Vercel Serverless Subsystem (/api)"]
+        LeadsAPI["POST /api/discover-leads"]
+        SEOAPI["POST /api/seo-audit"]
+        AdAPI["POST /api/generate-ad"]
+        ContractAPI["POST /api/generate-contract"]
+        WebchatAPI["POST /api/webchat-message"]
+        SMSAPI["POST /api/send-sms"]
+        TwilioSMS["POST /api/twilio-sms-reply"]
+        TwilioCall["POST /api/twilio-missed-call"]
+        ReviewEngine["AI Review & Reputation Module"]
+    end
+
+    subgraph Integrations ["🔌 Cloud Infrastructure"]
+        Gemini["Google Gemini 2.5 Flash AI"]
+        Twilio["Twilio SMS & Missed-Call Webhooks"]
+        Resend["Resend Transactional Email"]
+        OSM["OpenStreetMap Nominatim Geocoder"]
+    end
+
+    Contractor & SMB --> UI
+    Customer -->|Live Chat / SMS / Phone| Twilio & WebchatAPI
+    UI <--> Firestore
+    UI --> ThemeEngine
+    UI --> Serverless
+    Serverless --> Gemini & Twilio & Resend & OSM
+```
 
 ---
 
 ## 📁 Repository Directory Structure
 
+The repository is neatly organized and strictly partitioned:
+
 ```text
-├── api/                            # Backend Serverless Functions (Node.js)
-│   ├── discover-leads.js           # Multi-source local prospect lead finder
-│   ├── generate-ad.js              # Custom marketing campaign copy generator
-│   ├── generate-contract.js        # Dynamic SLA/NDA contract draft generator
-│   ├── generate-draft.js           # Smart text-draft editor
-│   ├── send-email.js               # Resend API outbound email client
-│   ├── send-sms.js                 # Twilio REST API outbound text dispatcher
-│   ├── seo-audit.js                # Local search keyword & SEO optimizer
-│   ├── twilio-missed-call.js       # Missed call automated textback responder
-│   ├── twilio-sms-reply.js         # Conversational SMS receptionist responder
-│   └── webchat-message.js          # Grounded live website webchat responder
-├── src/
-│   ├── main.jsx                    # Application entry point
-│   ├── App.jsx                     # Core router, global state, & self-building CSS engine
-│   ├── firebase.js                 # Firebase SDK initialize & Firestore mappings
-│   ├── index.css                   # Global styling system & custom variable rules
-│   └── components/
-│       ├── Sidebar.jsx             # Left hand sidebar view selector
-│       ├── Onboarding.jsx          # Setup flow with theme presets and staff directory
-│       └── views/
-│           ├── CommandCenter.jsx   # Operations dashboard, persona directives & sandbox
-│           ├── AutomationSuite.jsx # Live logs for webchat, email, and voicemail
-│           ├── LeadGen.jsx         # Live map geocoder & search prospect tool
-│           ├── SEOManager.jsx      # Website crawler & SEO checklist scanner
-│           ├── AdManager.jsx       # Google/Facebook campaign copy generator
-│           ├── ContractManager.jsx # Legal document hub with cursives digital signing
-│           ├── SettingsManager.jsx # Twilio configuration & team editor
-│           └── BillingManager.jsx  # SaaS subscription tier management
-├── firestore.rules                 # Security rules for Firestore databases
-├── vercel.json                     # Vercel Serverless routing rules
-└── vite.config.js                  # Frontend bundle manager config
+OmniBiz-AI/
+├── api/                            # Vercel Serverless Functions (Node.js)
+│   ├── README.md                   # Technical API catalog & sequence diagrams
+│   ├── admin-settings.js           # Platform configuration manager
+│   ├── competitor-analysis.js      # AI competitor intelligence & pricing benchmark
+│   ├── discover-leads.js           # Google Search Grounding & OSM local prospect finder
+│   ├── generate-ad.js              # Google Ads & Meta campaign copy generator
+│   ├── generate-contract.js        # SLA, NDA, and Trade Estimate contract compiler
+│   ├── send-email.js               # Resend transactional email dispatcher
+│   ├── send-sms.js                 # Twilio REST outbound text engine
+│   ├── seo-audit.js                # Page crawler, SEO scorer & local keyword analyzer
+│   ├── tts.js                      # Text-to-speech audio synthesis engine
+│   ├── twilio-missed-call.js       # Missed call automated SMS textback responder
+│   ├── twilio-sms-reply.js         # Conversational SMS AI receptionist webhook
+│   ├── webchat-message.js          # Grounded live website webchat responder
+│   └── _utils/                     # Shared GCP & API helper utilities
+│       └── gcp.js                  # GCP Vertex/Gemini authentication helpers
+├── electron/                       # Desktop Native Application Wrapper
+│   ├── README.md                   # Electron packaging documentation
+│   ├── main.cjs                    # Main process BrowserWindow setup
+│   └── preload.cjs                 # IPC security bridge
+├── public/                         # Public Assets & Webchat Snippets
+│   ├── README.md                   # Asset inventory & embed documentation
+│   ├── favicon.svg                 # Vector brand mark
+│   ├── icons.svg                   # Sprite icon manifest
+│   └── widget.html                 # Embeddable 24/7 webchat iframe
+├── src/                            # Single Page Application Frontend
+│   ├── README.md                   # Architecture & CSS theme engine docs
+│   ├── main.jsx                    # React 19 entry point
+│   ├── App.jsx                     # Router, global Firestore sync, dynamic theme engine
+│   ├── firebase.js                 # Firebase initialization script
+│   ├── index.css                   # Glassmorphic CSS design system & variables
+│   └── components/                 # Component tree
+│       ├── Sidebar.jsx             # Left navigation & tier badge
+│       ├── Onboarding.jsx          # Setup wizard with 8 industry presets
+│       ├── ShowcaseRecorder.jsx    # Built-in screen demo recorder
+│       ├── PhantomCursor.jsx       # Demo cursor simulator
+│       ├── BackendViewer.jsx       # Serverless function log monitor
+│       └── views/                  # Operational module views
+│           ├── CommandCenter.jsx   # ROI metrics & executive AI copilot
+│           ├── AutomationSuite.jsx # 24/7 AI Receptionist & AI Review Response Hub
+│           ├── LeadGen.jsx         # Prospect finder with OpenStreetMap & priority scoring
+│           ├── SEOManager.jsx      # Website auditor & Schema.org JSON-LD microdata builder
+│           ├── AdManager.jsx       # AI Google & Facebook Ad copy & demographic builder
+│           ├── ContractManager.jsx # Trade job estimator, quote dispatches, & contract hub
+│           ├── CompetitorAnalysis.jsx # Competitor intelligence & benchmarking tool
+│           ├── AgencyDashboard.jsx # Multi-tenant client workspace switcher
+│           ├── SettingsManager.jsx # Twilio credentials, team directory & receptionist prompt editor
+│           └── BillingManager.jsx  # Plan tiers (Free, Starter, Pro, Enterprise) & checkout
+├── firestore.rules                 # Security rules for Cloud Firestore
+├── vercel.json                     # Serverless rewrite rules for Vercel
+├── vite.config.js                  # Frontend Vite bundler configuration
+└── package.json                    # Project dependencies & build scripts
 ```
 
 ---
 
-## 📡 Backend API Endpoints Reference
+## 🎨 Supported Industry Presets
 
-All endpoints accept JSON payloads via HTTP POST, configure CORS headers, and integrate fail-safe fallbacks.
+OmniBiz-AI automatically adapts to 8 core business verticals:
 
-| Endpoint | Input Payload | Output Format | Description |
+| Industry Niche | Accent Colors | AI Receptionist Tone | Key Features Tailored |
 | :--- | :--- | :--- | :--- |
-| `POST /api/discover-leads` | `category`, `location` | JSON Array | Uses OSM Nominatim geocoding & Gemini 2.5 Flash to discover, score, and evaluate real target businesses. |
-| `POST /api/seo-audit` | `url`, `category` | JSON Object | Evaluates page titles, loading curves, crawl-ready tags, and outputs optimized recommendations. |
-| `POST /api/generate-ad` | `businessData`, `platform`, `budget`, `objective` | JSON Object | Builds target keywords, demographics, and copy optimized for Google, Facebook, or Instagram ads. |
-| `POST /api/generate-contract` | `template`, `clientName`, `businessData` | JSON Object | Compiles formal legal agreements (SLA/NDAs) matching specific company characteristics. |
-| `POST /api/send-sms` | `to`, `body` | JSON Object | Dispatches standard outbound SMS using saved Twilio REST credentials. |
-| `POST /api/twilio-missed-call` | Twilio Callback Parameters | Twilio XML | Triggers on call failure to send an immediate automated textback to the caller. |
-| `POST /api/twilio-sms-reply` | Twilio Webhook Form | TwiML Response | Contextual SMS conversational receptionist responding utilizing previous message memory. |
-| `POST /api/webchat-message` | `message`, `history`, `businessData` | JSON Object | Computes live chat responses matching the business's custom personnel profile. |
+| **🔧 Plumbing & HVAC** | Safety Orange / Emerald | Direct, Helpful, Urgent Dispatch | 1-Tap Job Estimator, Emergency SMS Textback, Part Lists |
+| **🚗 Auto Repair & Towing** | Steel Blue / Amber | Technical, Clear, Trustworthy | Estimate Dispatches, Warranty Disclaimers, Service Logs |
+| **🔨 Handyman & Remodeling** | Warm Rust / Teal | Friendly, Detail-Oriented | Quote Signatures, Scope of Work SLAs, Before/After Notes |
+| **🍕 Restaurants & Cafes** | Espresso / Warm Gold | Hospitable, Welcoming | Reservation FAQs, Menu Q&A, Google Review Auto-Responder |
+| **👗 Fashion & Boutique** | Blush Pink / Rose Gold | Elegant, Trendy | Inventory Inquiries, Custom Order Agreements, Styling Q&A |
+| **⛽ Gas Station & Store** | Royal Blue / Gold | Quick, Informative | Hours/Fuel Info, Supply Invoices, Local SEO Schema |
+| **💻 Tech & SaaS** | Cyber Cyan / Purple | Innovator, Tech-Savvy | SLA Contracts, Lead Scoring, Ad Copy Generators |
+| **⚖️ Professional Services** | Navy / Metallic Steel | Authoritative, Formal | Engagement NDAs, Client Intake, Appointment Booking |
 
 ---
 
-## 🎨 Self-Building UI & Themes
+## 🚀 Getting Started & Development
 
-Theme presets map to specific CSS color configurations dynamically seeded during onboarding:
+### 1. Prerequisites
+- **Node.js**: v18 or higher recommended.
+- **npm**: v9 or higher.
 
-- **Cyber SaaS**: Cyber Cyan (`#06b6d4`) & Electric Purple (`#8b5cf6`).
-- **Rugged Services**: Safety Orange (`#f97316`) & Emerald Green (`#10b981`).
-- **Rose Boutique**: Blush Pink (`#ec4899`) & Rose Gold (`#f43f5e`).
-- **Warm Cafe**: Espresso Stone (`#78350f`) & Caramel Gold (`#d97706`).
-- **Ocean Wellness**: Mint Green (`#14b8a6`) & Forest Teal (`#0d9488`).
-- **Navy Corporate**: Navy Blue (`#1d4ed8`) & Royal Steel (`#3b82f6`).
-
-Adjusting the `themePreset` writes local styles directly to `--accent-purple` and `--accent-cyan` variables on the page element, dynamically updates onboarding mockups, and shapes matching text presets.
-
----
-
-## 🚀 Getting Started & Local Development
-
-### 1. Prerequisite Installations
-Ensure Node.js is installed locally.
-
-### 2. Install Dependencies
+### 2. Installation
 ```bash
+git clone https://github.com/your-org/omnibiz-ai.git
+cd omnibiz-ai
 npm install
 ```
 
-### 3. Setup Environment Variables
-Create a local `.env` (or set environment variables on your server):
+### 3. Environment Setup
+Create a `.env.local` file in the root directory:
 ```env
-GEMINI_API_KEY="your-google-gemini-key"
-RESEND_API_KEY="your-resend-email-key"
+GEMINI_API_KEY="AIzaSy..."
+TWILIO_ACCOUNT_SID="AC..."
+TWILIO_AUTH_TOKEN="..."
+TWILIO_PHONE_NUMBER="+1..."
+RESEND_API_KEY="re_..."
 ```
 
-### 4. Running the App
-Start the local development server:
+### 4. Local Development Server
 ```bash
 npm run dev
 ```
 
-### 5. Running Production Compilations
+### 5. Production Compilation
 ```bash
 npm run build
 ```
-This builds files inside `/dist`, prepared to be served from any CDN or static hosting platform.
+
+Deployed live at [https://omnibiz-ai.me](https://omnibiz-ai.me).
