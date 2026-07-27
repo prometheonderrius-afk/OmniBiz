@@ -107,6 +107,28 @@ export default function AgencyDashboard({
     }
   };
 
+  // Real-time listener for Diagnostic API Telemetry Logs
+  useEffect(() => {
+    if (!db) return;
+    setLoadingLogs(true);
+
+    const logsRef = collection(db, 'apiLogs');
+    const unsubscribe = onSnapshot(logsRef, (snapshot) => {
+      const logsList = [];
+      snapshot.forEach((docSnap) => {
+        logsList.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      logsList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      setApiLogs(logsList);
+      setLoadingLogs(false);
+    }, (err) => {
+      console.warn("Failed real-time subscription for apiLogs:", err);
+      setLoadingLogs(false);
+    });
+
+    return () => unsubscribe();
+  }, [db]);
+
   // Listen to all Client Chat Threads for Support Hub
   useEffect(() => {
     if (!db) return;
