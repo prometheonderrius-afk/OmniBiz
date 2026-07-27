@@ -391,6 +391,7 @@ h1, h2, h3, h4, h5, h6 {
   position: sticky;
   top: 0;
   height: 100vh;
+  overflow-y: auto;
   z-index: 10;
 }
 
@@ -433,8 +434,7 @@ h1, h2, h3, h4, h5, h6 {
   
   .main-content {
     padding: 16px;
-    max-height: none;
-    overflow-y: visible;
+    min-height: auto;
   }
   
   /* Mobile Header topbar */
