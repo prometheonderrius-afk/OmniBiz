@@ -156,14 +156,18 @@ export default function PosManager({ businessData = {}, addNotification }) {
         </div>
 
         {/* Mode Selector */}
-        <div style={{ display: 'flex', gap: '6px', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+        <div style={{ display: 'flex', gap: '6px', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-glass)', flexWrap: 'wrap' }}>
           {[
-            { id: 'restaurant', label: '🍽️ Restaurant / Cafe' },
-            { id: 'kds', label: '🍳 Kitchen Display (KDS)' },
-            { id: 'retail', label: '🛒 Convenience / Retail' },
-            { id: 'ecommerce', label: '🌐 Online E-Commerce' },
-            { id: 'contractor', label: '🔨 Field Invoicing' }
-          ].map(m => (
+            { id: 'restaurant', label: '🍽️ Restaurant / Cafe', match: ['Restaurant', 'Cafe', 'Food'] },
+            { id: 'kds', label: '🍳 Kitchen Display (KDS)', match: ['Restaurant', 'Cafe', 'Food'] },
+            { id: 'retail', label: '🛒 Convenience / Retail', match: ['Retail', 'Gas Station', 'Boutique', 'Fashion'] },
+            { id: 'ecommerce', label: '🌐 Online E-Commerce', match: ['Tech', 'SaaS', 'E-Commerce', 'Retail', 'Boutique'] },
+            { id: 'contractor', label: '🔨 Field Invoicing', match: ['Plumbing', 'HVAC', 'Handyman', 'Auto', 'Contracting'] }
+          ].filter(m => {
+            // Admin gets access to all POS modes
+            if (category === '' || category === 'Admin') return true;
+            return m.match.some(keyword => category.includes(keyword));
+          }).map(m => (
             <button
               key={m.id}
               onClick={() => setPosMode(m.id)}

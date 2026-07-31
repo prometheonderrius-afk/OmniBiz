@@ -48,6 +48,29 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
   ];
 
   const isAdminOwner = userEmail === 'prometheonderrius@gmail.com';
+  const cat = businessCategory || '';
+
+  // Tailor navigation tabs strictly according to business category
+  const filteredMenuItems = menuItems.filter(item => {
+    if (isAdminOwner) return true; // Admin gets access to all tools
+
+    if (item.id === 'dispatch') {
+      // Field Tech Dispatch is strictly for Trade Contractors
+      return cat.includes('Plumbing') || cat.includes('HVAC') || cat.includes('Handyman') || cat.includes('Auto') || cat.includes('Contracting');
+    }
+
+    if (item.id === 'competitors') {
+      // Competitor Analysis for Tech, E-Commerce, Retail, or Professional Services
+      return cat.includes('Tech') || cat.includes('Retail') || cat.includes('Professional') || cat.includes('Fashion');
+    }
+
+    if (item.id === 'contracts') {
+      // Contract Hub for Contractors, Professional Services, and Tech
+      return cat.includes('Plumbing') || cat.includes('HVAC') || cat.includes('Handyman') || cat.includes('Professional') || cat.includes('Tech');
+    }
+
+    return true;
+  });
 
   const getTierBadgeClass = (tier) => {
     switch (tier) {
