@@ -159,6 +159,7 @@ export default function PosManager({ businessData = {}, addNotification }) {
         <div style={{ display: 'flex', gap: '6px', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
           {[
             { id: 'restaurant', label: '🍽️ Restaurant / Cafe' },
+            { id: 'kds', label: '🍳 Kitchen Display (KDS)' },
             { id: 'retail', label: '🛒 Convenience / Retail' },
             { id: 'ecommerce', label: '🌐 Online E-Commerce' },
             { id: 'contractor', label: '🔨 Field Invoicing' }

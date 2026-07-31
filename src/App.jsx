@@ -31,6 +31,10 @@ import SettingsManager from './components/views/SettingsManager';
 import PosManager from './components/views/PosManager';
 import PayrollManager from './components/views/PayrollManager';
 import InventoryManager from './components/views/InventoryManager';
+import VoiceAgentManager from './components/views/VoiceAgentManager';
+import StripeConnectManager from './components/views/StripeConnectManager';
+import PredictiveOpsManager from './components/views/PredictiveOpsManager';
+import DispatchCalendarManager from './components/views/DispatchCalendarManager';
 
 import ShowcaseRecorder from './components/ShowcaseRecorder';
 
@@ -725,6 +729,34 @@ export default function App() {
             case 'payroll':
               return (
                 <PayrollManager
+                  businessData={businessData}
+                  addNotification={addNotification}
+                />
+              );
+            case 'voice':
+              return (
+                <VoiceAgentManager
+                  businessData={businessData}
+                  addNotification={addNotification}
+                />
+              );
+            case 'dispatch':
+              return (
+                <DispatchCalendarManager
+                  businessData={businessData}
+                  addNotification={addNotification}
+                />
+              );
+            case 'predictive':
+              return (
+                <PredictiveOpsManager
+                  businessData={businessData}
+                  addNotification={addNotification}
+                />
+              );
+            case 'stripe':
+              return (
+                <StripeConnectManager
                   businessData={businessData}
                   addNotification={addNotification}
                 />
