@@ -251,14 +251,22 @@ export default function ShowcaseRecorder({ onClose }) {
         transition: 'width 0.3s ease',
         pointerEvents: isAutonomous ? 'none' : 'auto' // Lock controls during auto tour
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pointerEvents: 'auto' }}>
           <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ color: isRecording ? 'var(--accent-pink)' : 'var(--accent-cyan)' }}>●</span> 
             {isRecording ? 'Recording...' : 'Director Mode'}
           </h3>
-          {!isRecording && (
-            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>✖</button>
-          )}
+          <button 
+            onClick={() => {
+              if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                mediaRecorderRef.current.stop();
+              }
+              onClose();
+            }} 
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem', padding: '4px' }}
+          >
+            ✖
+          </button>
         </div>
 
         {/* Loom Style Camera Bubble */}

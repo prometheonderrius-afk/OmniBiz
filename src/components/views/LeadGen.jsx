@@ -15,6 +15,12 @@ export default function LeadGen({
   const [scrapeStep, setScrapeStep] = useState('');
   const [emailText, setEmailText] = useState('');
 
+  // State for Trial System
+  const [trialSending, setTrialSending] = useState(false);
+  const [autoTrialMode, setAutoTrialMode] = useState(true);
+  const [activeTrialLogins, setActiveTrialLogins] = useState([]);
+  const [replyProcessingId, setReplyProcessingId] = useState(null);
+
   // Determine lead viewing limit based on plan
   const getLeadLimit = () => {
     if (selectedTier === 'free') return 3;
@@ -24,13 +30,40 @@ export default function LeadGen({
 
   const limit = getLeadLimit();
 
-  const handleOpenLead = (lead) => {
+  const handleOpenLead = (lead, mode = 'outreach') => {
     setSelectedLead(lead);
-    // Custom draft generation based on lead name
-    setEmailText(`Subject: Partnering with ${lead.company} - Automated Assessment\n\nHi ${lead.name.split(' ')[0]},\n\nI was reviewing local search keywords and noticed ${lead.company} stands out in your market. However, you might be missing out on local customer traffic due to search optimization gaps. \n\nAt ${businessData.name || 'our company'}, we specialize in automated solutions. I've prepared a custom visibility blueprint for you. Let me know if you would like me to email it over.\n\nBest regards,\nOwner, ${businessData.name || 'OmniBiz Client'}`);
+    if (mode === 'trial') {
+      setEmailText(`Subject: 14-Day Risk-Free Trial Access for ${lead.company} - OmniBiz AI
+
+Hi ${lead.name.split(' ')[0]},
+
+I was reviewing local search and operational metrics for ${lead.company} and identified high-impact automation opportunities that can double your client intake.
+
+We'd love to invite ${lead.company} to try OmniBiz AI completely risk-free with a 14-Day Full Access Trial (no credit card required).
+
+All that's required to claim your trial:
+Just reply "YES" or "START" to this email, and your special trial login credentials and instant portal access link will be delivered straight to your inbox.
+
+Looking forward to empowering ${lead.company}!
+
+Best regards,
+OmniBiz AI Growth Team
+https://omnibiz.ai`);
+    } else {
+      setEmailText(`Subject: Partnering with ${lead.company} - Automated Assessment
+
+Hi ${lead.name.split(' ')[0]},
+
+I was reviewing local search keywords and noticed ${lead.company} stands out in your market. However, you might be missing out on local customer traffic due to search optimization gaps. 
+
+At ${businessData.name || 'our company'}, we specialize in automated solutions. I've prepared a custom visibility blueprint for you. Let me know if you would like me to email it over.
+
+Best regards,
+Owner, ${businessData.name || 'OmniBiz Client'}`);
+    }
   };
 
-  const handleSendOutreach = async () => {
+  const handleSendOutreach = async (isTrialOffer = false) => {
     if (!selectedLead) return;
     
     try {
@@ -51,15 +84,94 @@ export default function LeadGen({
         throw new Error(errData.message || `Status ${response.status}`);
       }
 
-      setLeads(prev => prev.map(l => l.id === selectedLead.id ? { ...l, status: 'Outreached' } : l));
+      const newStatus = isTrialOffer ? 'Trial Offered' : 'Outreached';
+      setLeads(prev => prev.map(l => l.id === selectedLead.id ? { ...l, status: newStatus } : l));
       setSavedHours(prev => prev + 0.5);
-      addNotification(`Outreach email successfully sent to ${selectedLead.name} (${selectedLead.company}) via Resend.`, "lead");
+      addNotification(
+        isTrialOffer 
+          ? `Automated 14-Day Risk-Free Trial invitation sent to ${selectedLead.name} (${selectedLead.company}).`
+          : `Outreach email successfully sent to ${selectedLead.name} (${selectedLead.company}).`, 
+        "lead"
+      );
     } catch (error) {
       console.error("Failed to send outreach email:", error);
-      alert(`Failed to send outreach email: ${error.message}. Please check your Resend API configuration on Vercel.`);
+      alert(`Failed to send outreach email: ${error.message}. Please check your Resend API configuration.`);
     }
 
     setSelectedLead(null);
+  };
+
+  // Automated 14-Day Trial System: Candidate Qualifier & Response Handler
+  const handleSimulateProspectReply = async (lead) => {
+    setReplyProcessingId(lead.id);
+    try {
+      const res = await fetch('/api/trial-reply-handler', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadEmail: lead.email,
+          leadName: lead.name,
+          leadCompany: lead.company
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to process trial response');
+
+      const trialRecord = {
+        id: lead.id,
+        leadName: lead.name,
+        company: lead.company,
+        email: lead.email,
+        trialDetails: data.trialDetails,
+        issuedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'Trial Active', trialCode: data.trialDetails.trialId } : l));
+      setActiveTrialLogins(prev => [trialRecord, ...prev]);
+      setSavedHours(prev => prev + 1.2);
+      addNotification(`🎉 ${lead.name} (${lead.company}) responded to the trial offer! Special 14-Day Trial Login (${data.trialDetails.trialId}) sent via email.`, 'lead');
+
+    } catch (err) {
+      console.error("Error processing prospect reply:", err);
+      alert(`Error processing trial reply: ${err.message}`);
+    } finally {
+      setReplyProcessingId(null);
+    }
+  };
+
+  const handleBulkTrialCampaign = async () => {
+    const qualifiedLeads = leads.filter(l => l.score >= 80 && l.status === 'New');
+    if (qualifiedLeads.length === 0) {
+      alert("No new highly qualified candidates (Fit Score ≥ 80%) found in database to invite to the 14-Day Free Trial.");
+      return;
+    }
+
+    setTrialSending(true);
+    let count = 0;
+
+    for (const lead of qualifiedLeads) {
+      try {
+        const bodyText = `Hi ${lead.name.split(' ')[0]},\n\nWe identified high-impact automation opportunities for ${lead.company}. We invite you to try OmniBiz AI completely risk-free with a 14-Day Full Access Trial.\n\nAll that's required: Just reply "YES" to this email and your trial login will be delivered instantly.\n\nBest regards,\nOmniBiz AI Growth Team`;
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: lead.email,
+            subject: `14-Day Risk-Free Trial Access for ${lead.company} - OmniBiz AI`,
+            body: bodyText
+          })
+        });
+        count++;
+      } catch (e) {
+        console.error("Error sending bulk trial invitation:", e);
+      }
+    }
+
+    setLeads(prev => prev.map(l => (l.score >= 80 && l.status === 'New') ? { ...l, status: 'Trial Offered' } : l));
+    setSavedHours(prev => prev + (count * 0.7));
+    setTrialSending(false);
+    addNotification(`Automated Marketing Engine: Dispatched 14-Day Risk-Free Trial offers to ${count} qualified candidates!`, 'lead');
   };
 
   const triggerScrape = async () => {
@@ -131,29 +243,77 @@ export default function LeadGen({
       {/* Header Panel */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h2 style={{ fontSize: '2rem', marginBottom: '6px' }}>AI Lead Generation</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h2 style={{ fontSize: '2rem', marginBottom: '6px' }}>AI Lead Generation & Automated Marketing</h2>
+            <span className="badge badge-purple" style={{ fontSize: '0.8rem', padding: '4px 10px' }}>14-Day Free Trial Engine</span>
+          </div>
           <p style={{ color: 'var(--text-secondary)' }}>
-            Automatically scrape, profile, and outreach to qualified local businesses that match your ideal customer profile.
+            Automatically qualify candidates for OmniBiz AI, dispatch personalized 14-day risk-free trial invitations, and auto-provision logins upon response.
           </p>
         </div>
-        <button 
-          className="glass-button glass-button-cyan"
-          disabled={scraping}
-          onClick={triggerScrape}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-        >
-          {scraping ? (
-            <>
-              <div className="animate-spin-fast" style={{ width: '14px', height: '14px', border: '2px solid transparent', borderTopColor: 'white', borderRadius: '50%' }}></div>
-              Scraping...
-            </>
-          ) : (
-            <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              Discover Leads
-            </>
-          )}
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            className="glass-button glass-button-purple"
+            disabled={trialSending}
+            onClick={handleBulkTrialCampaign}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            {trialSending ? (
+              <>
+                <div className="animate-spin-fast" style={{ width: '14px', height: '14px', border: '2px solid transparent', borderTopColor: 'white', borderRadius: '50%' }}></div>
+                Launching Trial Campaign...
+              </>
+            ) : (
+              <>
+                ⚡ Auto-Send 14-Day Trial Offers
+              </>
+            )}
+          </button>
+          <button 
+            className="glass-button glass-button-cyan"
+            disabled={scraping}
+            onClick={triggerScrape}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            {scraping ? (
+              <>
+                <div className="animate-spin-fast" style={{ width: '14px', height: '14px', border: '2px solid transparent', borderTopColor: 'white', borderRadius: '50%' }}></div>
+                Scraping...
+              </>
+            ) : (
+              <>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Discover Leads
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Automated Marketing Control Card */}
+      <div className="glass-card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(6, 182, 212, 0.05) 100%)', borderColor: 'var(--accent-purple)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '8px', color: '#fff' }}>
+              🤖 Autopilot Trial Candidate Qualifier & Auto-Responder
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+              When active, candidate leads with fit score ≥ 80% automatically receive a personalized 14-day risk-free trial email. Responding triggers an instant trial login credential dispatch.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: autoTrialMode ? 'var(--accent-emerald)' : 'var(--text-muted)' }}>
+              {autoTrialMode ? 'Autopilot Active' : 'Manual Mode'}
+            </span>
+            <button 
+              className={`glass-button ${autoTrialMode ? 'glass-button-emerald' : 'glass-button-secondary'}`}
+              onClick={() => setAutoTrialMode(!autoTrialMode)}
+              style={{ padding: '6px 14px', fontSize: '0.8rem' }}
+            >
+              {autoTrialMode ? 'ON' : 'OFF'}
+            </button>
+          </div>
+        </div>
       </div>
 
       {scraping && (
@@ -175,7 +335,12 @@ export default function LeadGen({
         
         {/* Left Card: Leads Table */}
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <h3 style={{ fontSize: '1.25rem' }}>Local Prospects Database</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '1.25rem' }}>Local Prospects Database</h3>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              Total Prospects: {leads.length} | Qualified Candidates (80%+): {leads.filter(l => l.score >= 80).length}
+            </span>
+          </div>
           
           <div style={{ overflowX: 'auto', position: 'relative' }}>
             <table className="glass-table">
@@ -184,14 +349,15 @@ export default function LeadGen({
                   <th>Lead Name</th>
                   <th>Company</th>
                   <th>Match Score</th>
-                  <th>Source</th>
+                  <th>Trial Candidate</th>
                   <th>Status</th>
-                  <th>Action</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {leads.map((lead, idx) => {
                   const isLocked = idx >= limit;
+                  const isQualified = lead.score >= 80;
                   return (
                     <tr 
                       key={lead.id} 
@@ -207,26 +373,43 @@ export default function LeadGen({
                       <td>
                         <span style={{ 
                           fontWeight: '700', 
-                          color: lead.score > 90 ? 'var(--accent-emerald)' : 'var(--accent-cyan)'
+                          color: lead.score >= 80 ? 'var(--accent-emerald)' : 'var(--accent-cyan)'
                         }}>{lead.score}%</span>
                       </td>
                       <td>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{lead.source}</span>
+                        {isQualified ? (
+                          <span className="badge badge-purple" style={{ fontSize: '0.7rem' }}>⭐ Ideal Candidate</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Standard</span>
+                        )}
                       </td>
                       <td>
                         <span className={`badge ${
                           lead.status === 'New' ? 'badge-cyan' : 
-                          lead.status === 'Outreached' ? 'badge-purple' : 'badge-emerald'
+                          lead.status === 'Outreached' ? 'badge-purple' :
+                          lead.status === 'Trial Offered' ? 'badge-pink' : 'badge-emerald'
                         }`}>{lead.status}</span>
                       </td>
                       <td>
-                        <button 
-                          className="glass-button glass-button-secondary" 
-                          style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                          onClick={() => handleOpenLead(lead)}
-                        >
-                          Outreach
-                        </button>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button 
+                            className="glass-button glass-button-purple" 
+                            style={{ padding: '4px 8px', fontSize: '0.7rem' }}
+                            onClick={() => handleOpenLead(lead, 'trial')}
+                          >
+                            🎁 Offer Trial
+                          </button>
+                          {lead.status === 'Trial Offered' && (
+                            <button 
+                              className="glass-button glass-button-emerald" 
+                              style={{ padding: '4px 8px', fontSize: '0.7rem' }}
+                              disabled={replyProcessingId === lead.id}
+                              onClick={() => handleSimulateProspectReply(lead)}
+                            >
+                              {replyProcessingId === lead.id ? 'Sending Credentials...' : '📩 Simulate Reply & Dispatch Login'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -285,7 +468,7 @@ export default function LeadGen({
 
             <div>
               <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                AI Generated Intro Message (Editable):
+                AI Generated Offer Message (Editable):
               </label>
               <textarea
                 className="glass-input"
@@ -304,10 +487,10 @@ export default function LeadGen({
                 Cancel
               </button>
               <button 
-                className="glass-button"
-                onClick={handleSendOutreach}
+                className="glass-button glass-button-purple"
+                onClick={() => handleSendOutreach(emailText.includes('14-Day Risk-Free Trial'))}
               >
-                Send Automated Message
+                Send Outreach Email
               </button>
             </div>
           </div>
@@ -315,7 +498,42 @@ export default function LeadGen({
 
       </div>
 
-      {/* Market Recommendations Section (Locked on Free/Starter) */}
+      {/* Issued 14-Day Trial Access Logins Table */}
+      {activeTrialLogins.length > 0 && (
+        <div className="glass-card animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <h3 style={{ fontSize: '1.15rem', color: 'var(--accent-emerald)' }}>
+            🎉 Active 14-Day Risk-Free Trial Logins Dispatched
+          </h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="glass-table">
+              <thead>
+                <tr>
+                  <th>Recipient</th>
+                  <th>Company</th>
+                  <th>Trial Access Code</th>
+                  <th>Temporary Password</th>
+                  <th>Expiration Date</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeTrialLogins.map(t => (
+                  <tr key={t.trialDetails.trialId}>
+                    <td style={{ fontWeight: '600' }}>{t.leadName} ({t.email})</td>
+                    <td>{t.company}</td>
+                    <td><code style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '4px', color: 'var(--accent-cyan)' }}>{t.trialDetails.trialId}</code></td>
+                    <td><code style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '4px', color: 'var(--accent-purple)' }}>{t.trialDetails.trialPassword}</code></td>
+                    <td>{t.trialDetails.expires}</td>
+                    <td><span className="badge badge-emerald">Active Trial</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Market Recommendations Section */}
       <div className={`glass-card ${isFeatureLocked('pro') ? 'premium-locked' : ''}`}>
         {isFeatureLocked('pro') && (
           <div className="premium-overlay">
@@ -345,14 +563,14 @@ export default function LeadGen({
           <div style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
             <h4 style={{ fontSize: '0.95rem', color: 'var(--accent-purple)', marginBottom: '8px' }}>🎯 Recommended Expansion Niche</h4>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-              Based on local competitor analysis, there is a **38% search gap** in commercial contracts for {businessData.category.split(' ')[0]} in zip codes within 15 miles. We recommend generating targeted flyers and running localized Google search ads targeting 'facility managers'.
+              Based on local competitor analysis, there is a <strong>38% search gap</strong> in commercial contracts for {(businessData.category || 'your business').split(' ')[0]} in zip codes within 15 miles. We recommend generating targeted flyers and running localized Google search ads targeting 'facility managers'.
             </p>
           </div>
 
           <div style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
             <h4 style={{ fontSize: '0.95rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>📊 Demand Index Heatmap</h4>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-              Local demand triggers show peaks on Thursday afternoons and Saturday mornings. Automating textbacks during these high-volume windows is projected to improve lead conversion rates by **22.4%** next month.
+              Local demand triggers show peaks on Thursday afternoons and Saturday mornings. Automating textbacks during these high-volume windows is projected to improve lead conversion rates by <strong>22.4%</strong> next month.
             </p>
           </div>
         </div>

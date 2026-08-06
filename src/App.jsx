@@ -35,6 +35,12 @@ import VoiceAgentManager from './components/views/VoiceAgentManager';
 import StripeConnectManager from './components/views/StripeConnectManager';
 import PredictiveOpsManager from './components/views/PredictiveOpsManager';
 import DispatchCalendarManager from './components/views/DispatchCalendarManager';
+import OAuthConnectorsManager from './components/views/OAuthConnectorsManager';
+import IndustryPlaybooks from './components/views/IndustryPlaybooks';
+import VoiceCommandAssistant from './components/views/VoiceCommandAssistant';
+import InterAgentBus from './components/views/InterAgentBus';
+import WhiteLabelManager from './components/views/WhiteLabelManager';
+import WorkflowMarketplace from './components/views/WorkflowMarketplace';
 
 import ShowcaseRecorder from './components/ShowcaseRecorder';
 
@@ -757,6 +763,48 @@ export default function App() {
             case 'stripe':
               return (
                 <StripeConnectManager
+                  businessData={businessData}
+                  addNotification={addNotification}
+                />
+              );
+            case 'oauth':
+              return (
+                <OAuthConnectorsManager
+                  businessData={businessData}
+                  addNotification={addNotification}
+                />
+              );
+            case 'playbooks':
+              return (
+                <IndustryPlaybooks
+                  businessData={businessData}
+                  addNotification={addNotification}
+                />
+              );
+            case 'voicecmd':
+              return (
+                <VoiceCommandAssistant
+                  businessData={businessData}
+                  addNotification={addNotification}
+                />
+              );
+            case 'bus':
+              return (
+                <InterAgentBus
+                  businessData={businessData}
+                  addNotification={addNotification}
+                />
+              );
+            case 'whitelabel':
+              return (
+                <WhiteLabelManager
+                  businessData={businessData}
+                  addNotification={addNotification}
+                />
+              );
+            case 'marketplace':
+              return (
+                <WorkflowMarketplace
                   businessData={businessData}
                   addNotification={addNotification}
                 />
