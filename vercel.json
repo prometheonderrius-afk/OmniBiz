@@ -1,5 +1,10 @@
 {
   "rewrites": [
+    { "source": "/api/generate-ad", "destination": "/api/ai-generate?type=ad" },
+    { "source": "/api/generate-contract", "destination": "/api/ai-generate?type=contract" },
+    { "source": "/api/competitor-analysis", "destination": "/api/ai-generate?type=competitor" },
+    { "source": "/api/discover-leads", "destination": "/api/ai-generate?type=leads" },
+    { "source": "/api/seo-audit", "destination": "/api/ai-generate?type=seo" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]

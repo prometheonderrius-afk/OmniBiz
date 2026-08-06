@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 import twilioMissedCallRaw from '../../api/twilio-missed-call.js?raw';
 import webchatMessageRaw from '../../api/webchat-message.js?raw';
-import seoAuditRaw from '../../api/seo-audit.js?raw';
+import aiGenerateRaw from '../../api/ai-generate.js?raw';
 import gcpRaw from '../../api/_utils/gcp.js?raw';
 import twilioSmsReplyRaw from '../../api/twilio-sms-reply.js?raw';
 
@@ -13,7 +13,7 @@ export default function BackendViewer({ onClose }) {
     { name: 'twilio-missed-call.js', icon: '📄', raw: twilioMissedCallRaw },
     { name: 'twilio-sms-reply.js', icon: '📄', raw: twilioSmsReplyRaw },
     { name: 'webchat-message.js', icon: '📄', raw: webchatMessageRaw },
-    { name: 'seo-audit.js', icon: '📄', raw: seoAuditRaw },
+    { name: 'ai-generate.js', icon: '📄', raw: aiGenerateRaw },
     { name: 'gcp.js', icon: '📄', raw: gcpRaw },
   ];
 
