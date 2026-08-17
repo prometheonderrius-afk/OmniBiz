@@ -41,8 +41,8 @@ gcloud run deploy "$SERVICE_NAME" \
   --source . \
   --region "$REGION" \
   --allow-unauthenticated \
-  --set-env-vars NODE_ENV=production \
-  --set-secrets GEMINI_API_KEY=GEMINI_API_KEY:latest,TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest,TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest,STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest
+  --quiet \
+  --set-env-vars NODE_ENV=production
 
 echo "================================================="
 echo "✅ GCP Deployment Complete!"
