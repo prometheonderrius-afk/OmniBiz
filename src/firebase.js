@@ -3,12 +3,12 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "wacom-canvas.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "wacom-canvas",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "wacom-canvas.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "948691108517",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:948691108517:web:b8412b3428bec908ddc34c"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBuyeAfCNfBLX0vS_T9rSUVy7PAdKp-8-0",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "zany-passkey-d9st9.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "zany-passkey-d9st9",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "zany-passkey-d9st9.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "214615800644",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:214615800644:web:d5c70509a0622e5465f511"
 };
 
 const app = initializeApp(firebaseConfig);
