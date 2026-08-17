@@ -41,6 +41,10 @@ import VoiceCommandAssistant from './components/views/VoiceCommandAssistant';
 import InterAgentBus from './components/views/InterAgentBus';
 import WhiteLabelManager from './components/views/WhiteLabelManager';
 import WorkflowMarketplace from './components/views/WorkflowMarketplace';
+import MultiAgentMesh from './components/views/MultiAgentMesh';
+import FluidMicroUI from './components/views/FluidMicroUI';
+import CashflowGuard from './components/views/CashflowGuard';
+import OfflineSyncBadge from './components/OfflineSyncBadge';
 
 import ShowcaseRecorder from './components/ShowcaseRecorder';
 
@@ -646,24 +650,28 @@ export default function App() {
           <span style={{ fontWeight: '800', fontSize: '1rem', letterSpacing: '-0.02em', fontFamily: 'var(--font-heading)' }}>
             OmniBiz <span className="text-gradient-purple">AI</span>
           </span>
-          <button 
-            onClick={handleSignOut}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '6px'
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <OfflineSyncBadge addNotification={addNotification} />
+            <button 
+              onClick={handleSignOut}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '6px'
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </button>
+          </div>
         </div>
 
         {/* Desktop Header Toolbar */}
-        <div className="desktop-only-header" style={{ display: 'flex', justifyContent: 'flex-end', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+        <div className="desktop-only-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+          <OfflineSyncBadge addNotification={addNotification} />
           <button 
             className="glass-button glass-button-secondary" 
             onClick={handleSignOut}
@@ -805,6 +813,27 @@ export default function App() {
             case 'marketplace':
               return (
                 <WorkflowMarketplace
+                  businessData={businessData}
+                  addNotification={addNotification}
+                />
+              );
+            case 'mesh':
+              return (
+                <MultiAgentMesh
+                  businessData={businessData}
+                  addNotification={addNotification}
+                />
+              );
+            case 'fluidui':
+              return (
+                <FluidMicroUI
+                  businessData={businessData}
+                  addNotification={addNotification}
+                />
+              );
+            case 'cashflow':
+              return (
+                <CashflowGuard
                   businessData={businessData}
                   addNotification={addNotification}
                 />
