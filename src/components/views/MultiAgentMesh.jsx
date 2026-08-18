@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { evaluateConductorRules, GOVERNANCE_POLICIES } from '../../utils/conductorRules';
 
 export default function MultiAgentMesh({ businessData, addNotification }) {
   const [selectedAgent, setSelectedAgent] = useState('supervisor');
@@ -16,67 +17,71 @@ export default function MultiAgentMesh({ businessData, addNotification }) {
     financialHealth: { status: 'CREDIT_HOLD', overdueBalance: '$1,250.00', daysPastDue: 94, creditHold: true },
     logisticsProposal: { suggestedTech: 'David (Senior HVAC)', proposedSlot: '2:15 PM Today', distance: '3.4 mi' },
     supplyStatus: { partNumber: 'CAP-45-5-440V', distributor: 'Johnstone Supply', inStock: true, eta: 'Ready at Will-Call' },
-    supervisorResolution: 'CONFLICT DETECTED: Logistics P0 dispatch conflicted with CFO Credit-Hold. Resolution: Dispatch locked to 2:15 PM conditional on 1-Click Pay Link clearing $1,250 past-due + $75 diagnostic deposit.',
     finalClientSMS: 'Hi Marcus, we detected a seized capacitor. David is 3.4 miles away and can arrive at 2:15 PM. Due to an open balance of $1,250, tap here to settle & lock your priority slot: https://omnibiz-ai.me/pay/p0-vance'
   });
+
+  // Evaluate Deterministic Conductor Rules (0.00ms Zero-LLM Latency)
+  const conductorVerdict = useMemo(() => {
+    return evaluateConductorRules(blackboardState);
+  }, [blackboardState]);
 
   // Telemetry Log
   const [swarmLog, setSwarmLog] = useState([
     {
       id: 1,
-      timestamp: '01:00:12',
-      agent: '🎯 Triage Specialist',
+      timestamp: '01:04:02',
+      agent: '🎯 Triage Specialist (LLM)',
       type: 'signal',
       mcpTool: 'mcp://diagnostics/parse_mechanical_fault',
-      action: 'Signals Blackboard: Fault: Seized Compressor | Urgency: P0 Critical | Electrical Risk',
-      status: 'Signal Published'
+      action: 'Semantic Extraction: Seized Compressor | P0 Emergency | Electrical Hazard',
+      latency: '340ms'
     },
     {
       id: 2,
-      timestamp: '01:00:12',
-      agent: '📍 Logistics Coordinator',
+      timestamp: '01:04:02',
+      agent: '📍 Logistics Coordinator (LLM + Graph)',
       type: 'proposal',
       mcpTool: 'mcp://calendar/request_instant_slot',
-      action: 'Proposes Blackboard: Lock 2:15 PM slot with David (3.4 mi away)',
-      status: 'Proposed Slot'
+      action: 'Slot Proposal: Lock 2:15 PM slot with David (3.4 mi away)',
+      latency: '290ms'
     },
     {
       id: 3,
-      timestamp: '01:00:13',
-      agent: '🛡️ Autonomous CFO',
+      timestamp: '01:04:02',
+      agent: '🛡️ Autonomous CFO (DB Query)',
       type: 'veto',
       mcpTool: 'mcp://finance/check_client_credit_hold',
-      action: 'BLACKBOARD VETO: Client has $1,250 past-due (94 days). Emits CREDIT_HOLD block flag.',
-      status: 'VETO Emitted'
+      action: 'Blackboard Signal: Client has $1,250 past-due (94 days). Emits CREDIT_HOLD flag.',
+      latency: '45ms'
     },
     {
       id: 4,
-      timestamp: '01:00:13',
-      agent: '👑 Executive Orchestrator (Supervisor)',
+      timestamp: '01:04:03',
+      agent: '⚖️ Deterministic Conductor (HARD-CODED LAW)',
       type: 'resolution',
-      mcpTool: 'mcp://orchestrator/resolve_conflict_matrix',
-      action: 'CONFLICT RESOLVED: Overrides unbilled dispatch. Instructs Client Liaison to bind payment gate before truck roll.',
-      status: 'Resolved'
+      mcpTool: 'conductor://rules/evaluate_invariants',
+      action: 'DETERMINISTIC INTERCEPT: CFO_CREDIT_HOLD rule triggered in 0.024ms. Blocked raw slot lock; attached 1-click invoice clearance gate.',
+      latency: '0.024ms (Zero-LLM)'
     },
     {
       id: 5,
-      timestamp: '01:00:14',
-      agent: '💬 Client Liaison',
+      timestamp: '01:04:03',
+      agent: '💬 Client Liaison (LLM Synthesizer)',
       type: 'execution',
       mcpTool: 'mcp://communications/dispatch_gated_sms',
-      action: 'Dispatches synthesized SMS with conditional 1-click settlement link.',
-      status: 'SMS Sent'
+      action: 'Dispatched synthesized SMS with conditional 1-click settlement link under Conductor lock.',
+      latency: '180ms'
     }
   ]);
 
   const agents = [
     {
       id: 'supervisor',
-      name: '👑 Executive Conductor (Supervisor)',
-      role: 'Master Orchestrator & Conflict Resolver',
-      desc: 'Top-tier state arbiter. Ingests proposals from all 10 agents, enforces governance policy matrices, and prevents colliding actions.',
-      mcpTools: ['resolve_conflict_matrix', 'enforce_governance_rules', 'grant_execution_lock'],
-      stats: '100% Conflict Free',
+      name: '⚖️ Deterministic Executive Conductor',
+      role: 'The Law (Hardcoded Policy Matrix)',
+      desc: 'Zero-LLM mathematical state arbiter. Evaluates immutable policy invariants in < 0.05ms to prevent collisions, hallucinations, and unbilled dispatches.',
+      mcpTools: ['evaluate_invariants', 'enforce_policy_matrix', 'grant_atomic_lock'],
+      stats: '0.02ms Latency | Zero Drift',
       category: 'core'
     },
     {
@@ -176,7 +181,7 @@ export default function MultiAgentMesh({ businessData, addNotification }) {
     setSwarmExecuting(true);
 
     if (addNotification) {
-      addNotification(`Executive Supervisor: Conflict scenario '${scenario}' executed & resolved.`, 'automation');
+      addNotification(`Deterministic Conductor: Executing scenario '${scenario}' through policy matrix...`, 'automation');
     }
 
     setTimeout(() => {
@@ -184,21 +189,22 @@ export default function MultiAgentMesh({ businessData, addNotification }) {
         setBlackboardState({
           ...blackboardState,
           financialHealth: { status: 'CREDIT_HOLD', overdueBalance: '$1,250.00', daysPastDue: 94, creditHold: true },
-          supervisorResolution: 'CONFLICT RESOLVED: Overrode unbilled emergency dispatch due to 94-day delinquent balance. Client Liaison instructed to require upfront invoice clearance.',
-          finalClientSMS: 'Hi Marcus, we diagnosed your seized compressor. David is available at 2:15 PM today. To lock this emergency slot, please settle your $1,250 open balance: https://omnibiz-ai.me/pay/p0-vance'
+          supplyStatus: { partNumber: 'CAP-45-5-440V', distributor: 'Johnstone Supply', inStock: true, eta: 'Ready at Will-Call' },
+          logisticsProposal: { suggestedTech: 'David (Senior HVAC)', proposedSlot: '2:15 PM Today', distance: '3.4 mi' },
+          finalClientSMS: 'Hi Marcus, we detected a seized capacitor. David is available at 2:15 PM today. To lock this emergency slot, please settle your $1,250 open balance: https://omnibiz-ai.me/pay/p0-vance'
         });
       } else if (scenario === 'supply_delay') {
         setBlackboardState({
           ...blackboardState,
-          supplyStatus: { partNumber: 'BLWR-MTR-1-2HP', distributor: 'Ferguson HVAC', inStock: false, eta: 'Arriving at 1:45 PM' },
-          logisticsProposal: { suggestedTech: 'Marcus (Tech)', proposedSlot: '2:30 PM (Shifted from 1:00 PM)', distance: '4.1 mi' },
-          supervisorResolution: 'CONFLICT RESOLVED: Supply House reported part not ready until 1:45 PM. Conductor shifted requested 1:00 PM slot to 2:30 PM to guarantee part in van before tech arrives.',
-          finalClientSMS: 'Hi Marcus, we reserved your 1/2HP blower motor at Ferguson (ready 1:45 PM). Marcus will pick it up and arrive at 2:30 PM sharp. Reply YES to confirm.'
+          financialHealth: { status: 'GOOD_STANDING', overdueBalance: '$0.00', daysPastDue: 0, creditHold: false },
+          supplyStatus: { partNumber: 'BLWR-MTR-1-2HP', distributor: 'Ferguson HVAC', inStock: false, eta: 'Arriving 1:45 PM' },
+          logisticsProposal: { suggestedTech: 'Marcus (Tech)', proposedSlot: '2:30 PM (Shifted from 1:00 PM for parts pickup)', distance: '4.1 mi' },
+          finalClientSMS: 'Hi Marcus, we reserved your 1/2HP blower motor at Ferguson (ready 1:45 PM). Marcus will pick it up and arrive at 2:30 PM sharp. Reply YES to lock.'
         });
       }
 
       setSwarmExecuting(false);
-    }, 1400);
+    }, 400);
   };
 
   const filteredAgents = swarmFilter === 'all' ? agents : agents.filter(a => a.category === swarmFilter);
@@ -210,17 +216,17 @@ export default function MultiAgentMesh({ businessData, addNotification }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h2 style={{ fontSize: '1.6rem', fontWeight: '800', margin: 0 }}>👑 Swarm Orchestrator &amp; Blackboard State Mesh</h2>
-            <span className="badge badge-purple">Executive Supervisor Model</span>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: '800', margin: 0 }}>⚖️ Deterministic Conductor &amp; Blackboard Mesh</h2>
+            <span className="badge badge-purple">The Law (Zero-LLM Script)</span>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-            Centralized conflict resolution preventing inter-agent collisions (e.g. Credit-Hold vs Emergency Dispatch, Parts Delays vs Calendar Slots).
+            <em>"Let the agents do the thinking, let the Conductor be the law."</em> Absolute mathematical policy invariants evaluated in &lt; 0.05ms.
           </p>
         </div>
 
         {/* Live Conflict Simulation Controls */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Test Conflict:</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Trigger Invariant Rule:</span>
           <button
             onClick={() => handleRunConflictResolution('credit_hold')}
             className="glass-button"
@@ -232,7 +238,7 @@ export default function MultiAgentMesh({ businessData, addNotification }) {
               fontWeight: 'bold'
             }}
           >
-            ⚖️ CFO Credit-Hold vs. Dispatch
+            ⚖️ Rule 1: CFO Credit-Hold Gate
           </button>
 
           <button
@@ -246,7 +252,7 @@ export default function MultiAgentMesh({ businessData, addNotification }) {
               fontWeight: 'bold'
             }}
           >
-            🚚 Parts Delay vs. Booking Slot
+            🚚 Rule 3: Parts Transit Sync
           </button>
         </div>
       </div>
@@ -257,50 +263,55 @@ export default function MultiAgentMesh({ businessData, addNotification }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '1.2rem' }}>🧠</span>
             <div>
-              <h3 style={{ fontSize: '1.1rem', margin: 0, fontWeight: '700' }}>Active Blackboard State (Shared Event Mesh)</h3>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Atomic shared memory inspected and arbitrated by the Executive Supervisor</div>
+              <h3 style={{ fontSize: '1.1rem', margin: 0, fontWeight: '700' }}>Active Blackboard State (Atomic Memory)</h3>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Evaluated by pure TypeScript/JS mathematical policy invariants</div>
             </div>
           </div>
-          <span className="badge badge-emerald">Conflict-Free Atomic State</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="badge badge-emerald">Execution: {conductorVerdict.executionTimeMs}</span>
+            <span className="badge badge-cyan">Lock: {conductorVerdict.atomicLockId}</span>
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', marginBottom: '16px' }}>
           <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '6px', border: '1px solid var(--border-glass)' }}>
-            <div style={{ fontSize: '0.7rem', color: 'var(--accent-purple)', fontWeight: 'bold' }}>1. TRIAGE DIAGNOSTIC</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--accent-purple)', fontWeight: 'bold' }}>1. TRIAGE DIAGNOSTIC (LLM)</div>
             <div style={{ fontSize: '0.85rem', fontWeight: 'bold', marginTop: '2px' }}>{blackboardState.triageIntent.fault}</div>
             <div style={{ fontSize: '0.75rem', color: 'var(--accent-pink)' }}>{blackboardState.triageIntent.severity} | {blackboardState.triageIntent.hazard}</div>
           </div>
 
           <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '6px', border: '1px solid var(--border-glass)' }}>
-            <div style={{ fontSize: '0.7rem', color: 'var(--accent-pink)', fontWeight: 'bold' }}>2. CFO FINANCIAL STANDING</div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', marginTop: '2px', color: 'var(--accent-pink)' }}>STATUS: {blackboardState.financialHealth.status}</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--accent-pink)', fontWeight: 'bold' }}>2. CFO FINANCIAL STANDING (DB)</div>
+            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', marginTop: '2px', color: blackboardState.financialHealth.creditHold ? 'var(--accent-pink)' : 'var(--accent-emerald)' }}>
+              STATUS: {blackboardState.financialHealth.status}
+            </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Balance: {blackboardState.financialHealth.overdueBalance} ({blackboardState.financialHealth.daysPastDue}d late)</div>
           </div>
 
           <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '6px', border: '1px solid var(--border-glass)' }}>
-            <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', fontWeight: 'bold' }}>3. LOGISTICS DISPATCH</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', fontWeight: 'bold' }}>3. LOGISTICS DISPATCH (PROPOSAL)</div>
             <div style={{ fontSize: '0.85rem', fontWeight: 'bold', marginTop: '2px' }}>{blackboardState.logisticsProposal.suggestedTech}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--accent-emerald)' }}>Slot: {blackboardState.logisticsProposal.proposedSlot} ({blackboardState.logisticsProposal.distance})</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--accent-emerald)' }}>Slot: {blackboardState.logisticsProposal.proposedSlot}</div>
           </div>
 
           <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '6px', border: '1px solid var(--border-glass)' }}>
-            <div style={{ fontSize: '0.7rem', color: '#f59e0b', fontWeight: 'bold' }}>4. SUPPLY PROCUREMENT</div>
+            <div style={{ fontSize: '0.7rem', color: '#f59e0b', fontWeight: 'bold' }}>4. SUPPLY PROCUREMENT (LIVE API)</div>
             <div style={{ fontSize: '0.85rem', fontWeight: 'bold', marginTop: '2px' }}>{blackboardState.supplyStatus.partNumber}</div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{blackboardState.supplyStatus.distributor} ({blackboardState.supplyStatus.eta})</div>
           </div>
         </div>
 
-        {/* Supervisor Conflict Arbiter Box */}
-        <div style={{ padding: '16px', background: 'rgba(139, 92, 246, 0.1)', borderRadius: '8px', border: '1px solid var(--accent-purple)' }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--accent-purple)', fontWeight: '800', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-            <span>👑 EXECUTIVE SUPERVISOR ARBITRATION VERDICT:</span>
-            <span>Policy: CFO_CREDIT_HOLD_GATE</span>
+        {/* Deterministic Conductor Policy Verdict */}
+        <div style={{ padding: '16px', background: 'rgba(139, 92, 246, 0.12)', borderRadius: '8px', border: '1px solid var(--accent-purple)' }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--accent-purple)', fontWeight: '800', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <span>⚖️ DETERMINISTIC CONDUCTOR POLICY VERDICT (HARD-CODED INVARIANTS):</span>
+            <span>Speed: {conductorVerdict.executionTimeMs} | Zero Hallucination</span>
           </div>
           <div style={{ fontSize: '0.85rem', color: '#ffffff', lineHeight: '1.4' }}>
-            {blackboardState.supervisorResolution}
+            {conductorVerdict.verdictSummary}
           </div>
           <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(139,92,246,0.3)', fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
-            💬 <strong>Final Authorized Outbound SMS:</strong> "{blackboardState.finalClientSMS}"
+            💬 <strong>Authorized Atomic Output:</strong> "{blackboardState.finalClientSMS}"
           </div>
         </div>
       </div>
@@ -310,8 +321,8 @@ export default function MultiAgentMesh({ businessData, addNotification }) {
         <h3 style={{ fontSize: '1.2rem', margin: 0, fontWeight: '700' }}>Active Swarm Fleet Members</h3>
         <div style={{ display: 'flex', gap: '4px', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
           {[
-            { id: 'all', label: 'All 11 Agents' },
-            { id: 'core', label: 'Supervisor Core' },
+            { id: 'all', label: 'All 11 Members' },
+            { id: 'core', label: 'Conductor Law' },
             { id: 'operations', label: 'Field & Ops' },
             { id: 'finance', label: 'Pricing & CFO' },
             { id: 'communications', label: 'Customer & Voice' }
@@ -359,7 +370,7 @@ export default function MultiAgentMesh({ businessData, addNotification }) {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span style={{ fontSize: '0.75rem', color: isSupervisor ? 'var(--accent-cyan)' : 'var(--accent-purple)', fontWeight: 'bold' }}>{agent.role}</span>
-                  <span className="badge badge-emerald">{isSupervisor ? 'Supervisor' : 'Active Worker'}</span>
+                  <span className="badge badge-emerald">{isSupervisor ? 'The Law' : 'Active Worker'}</span>
                 </div>
                 <h3 style={{ fontSize: '1.05rem', margin: '0 0 6px 0', fontWeight: '700' }}>{agent.name}</h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.4', margin: '0 0 12px 0' }}>
@@ -369,7 +380,7 @@ export default function MultiAgentMesh({ businessData, addNotification }) {
 
               <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>MCP TOOL BINDINGS:</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>TOOL BINDINGS:</span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--accent-emerald)', fontWeight: 'bold' }}>{agent.stats}</span>
                 </div>
                 <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
@@ -389,10 +400,10 @@ export default function MultiAgentMesh({ businessData, addNotification }) {
       <div className="glass-card" style={{ padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div>
-            <h3 style={{ fontSize: '1.15rem', margin: 0, fontWeight: '700' }}>⚡ Sub-Second Event Mesh &amp; Arbitration Stream</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>Live signal bus tracing proposals, vetos, and supervisor conflict resolutions.</p>
+            <h3 style={{ fontSize: '1.15rem', margin: 0, fontWeight: '700' }}>⚡ Sub-Second Event Mesh &amp; Invariant Arbitration Stream</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>Live signal bus tracing proposals, vetos, and instant deterministic rule resolutions.</p>
           </div>
-          <span className="badge badge-purple">Zero Collisions</span>
+          <span className="badge badge-purple">&lt; 0.05ms Arbitration</span>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -416,7 +427,10 @@ export default function MultiAgentMesh({ businessData, addNotification }) {
                     {log.mcpTool}
                   </span>
                 </div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{log.timestamp}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--accent-emerald)', fontFamily: 'monospace' }}>{log.latency}</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{log.timestamp}</span>
+                </div>
               </div>
 
               <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{log.action}</div>
