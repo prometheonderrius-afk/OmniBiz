@@ -73,7 +73,7 @@ const getThemePresetForCategory = (cat) => {
   return 'rugged_services';
 };
 
-export default function Onboarding({ onComplete }) {
+export default function Onboarding({ onComplete, initialTier = 'pro' }) {
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [category, setCategory] = useState(categories[0]);
@@ -81,6 +81,7 @@ export default function Onboarding({ onComplete }) {
   const [location, setLocation] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
   const [goal, setGoal] = useState(goals[0]);
+  const [selectedPlanTier, setSelectedPlanTier] = useState(initialTier);
   
   // New States
   const [ownerName, setOwnerName] = useState('');
@@ -142,7 +143,8 @@ export default function Onboarding({ onComplete }) {
       ownerEmail,
       ownerPhone,
       employees,
-      themePreset
+      themePreset,
+      selectedTier: selectedPlanTier
     });
   };
 
@@ -467,6 +469,42 @@ export default function Onboarding({ onComplete }) {
                   </div>
                 );
               })}
+            </div>
+
+            {/* Plan Tier Selector */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: '600' }}>
+                Subscription Plan Tier:
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px' }}>
+                {[
+                  { id: 'free', name: 'Free Trial', price: '$0', badge: 'Trial' },
+                  { id: 'starter', name: 'Starter', price: '$49', badge: 'Growth' },
+                  { id: 'pro', name: 'Pro Swarm', price: '$149', badge: '🔥 Top Pick' },
+                  { id: 'enterprise', name: 'Enterprise', price: '$299', badge: 'Fleet' }
+                ].map(p => {
+                  const isPlanSelected = selectedPlanTier === p.id;
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => setSelectedPlanTier(p.id)}
+                      style={{
+                        padding: '10px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        background: isPlanSelected ? 'rgba(139, 92, 246, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                        border: isPlanSelected ? '2px solid var(--accent-purple)' : '1px solid var(--border-glass)',
+                        textAlign: 'center',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.65rem', color: isPlanSelected ? 'var(--accent-cyan)' : 'var(--text-muted)', fontWeight: '700' }}>{p.badge}</div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: '700', marginTop: '2px' }}>{p.name}</div>
+                      <div style={{ fontSize: '0.95rem', fontWeight: '800', color: 'var(--text-primary)', marginTop: '2px' }}>{p.price}<span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>/mo</span></div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Live Preview Widget */}

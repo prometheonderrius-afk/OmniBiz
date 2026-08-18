@@ -53,6 +53,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [signupTier, setSignupTier] = useState('pro');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
@@ -306,7 +307,15 @@ export default function App() {
 
     try {
       if (isRegistering) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        setSelectedTier(signupTier);
+        // Persist chosen tier immediately
+        await setDoc(doc(db, 'users', userCred.user.uid), {
+          selectedTier: signupTier,
+          tierStatus: signupTier === 'free' ? 'active' : 'trial_active',
+          createdAt: Date.now()
+        }, { merge: true });
+        addNotification(`Welcome! Subscription plan initialized to ${signupTier.toUpperCase()}.`, "system");
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -332,14 +341,20 @@ export default function App() {
   const handleOnboardingComplete = async (data) => {
     if (!user) return;
 
+    const effectiveTier = data.selectedTier || selectedTier || signupTier || 'free';
+    const isAutoPilotSupported = effectiveTier === 'pro' || effectiveTier === 'enterprise';
+
     // 1. Save User Profile
     await setDoc(doc(db, 'users', user.uid), {
       businessData: data,
-      selectedTier: 'free',
+      selectedTier: effectiveTier,
       onboardingComplete: true,
-      autopilot: false,
+      autopilot: isAutoPilotSupported,
       savedHours: 12.5
-    });
+    }, { merge: true });
+
+    setSelectedTier(effectiveTier);
+    setAutopilot(isAutoPilotSupported);
 
     // 2. Seed default data for sandbox testing (dynamic based on onboarding details)
     const owner = data.ownerName || 'Owner';
@@ -482,39 +497,132 @@ export default function App() {
 
   // Auth Screen
   if (!user) {
+    const signupTiers = [
+      {
+        id: 'free',
+        name: 'Free Trial',
+        price: '$0',
+        period: '/mo',
+        badge: '14-Day Trial',
+        badgeClass: 'badge-muted',
+        desc: 'Single-Agent Triage & 50 AI SMS/mo'
+      },
+      {
+        id: 'starter',
+        name: 'Starter Growth',
+        price: '$49',
+        period: '/mo',
+        badge: 'Growing Ops',
+        badgeClass: 'badge-cyan',
+        desc: '3-Agent Mesh & Local Review Guard'
+      },
+      {
+        id: 'pro',
+        name: 'Pro Swarm',
+        price: '$149',
+        period: '/mo',
+        badge: '🔥 Recommended',
+        badgeClass: 'badge-purple',
+        highlight: true,
+        desc: 'Sub-Second Voice AI & 24/7 Autopilot'
+      },
+      {
+        id: 'enterprise',
+        name: 'Enterprise',
+        price: '$299',
+        period: '/mo',
+        badge: 'Fleet Power',
+        badgeClass: 'badge-pink',
+        desc: 'Full 10-Agent Swarm + Conductor Law'
+      }
+    ];
+
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px' }}>
-        <div className="glass-card animate-fade-in" style={{ maxWidth: '400px', width: '100%', padding: '32px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', marginBottom: '24px' }}>
-            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'linear-gradient(135deg, var(--accent-purple) 0%, #6d28d9 100%)', display: 'flex', alignItems: 'center', justifyCenter: 'center', color: 'white', fontWeight: '800', fontSize: '0.9rem', justifyContent: 'center' }}>Ω</div>
+        <div className="glass-card animate-fade-in" style={{ maxWidth: isRegistering ? '760px' : '420px', width: '100%', padding: '32px', transition: 'max-width 0.3s ease' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', marginBottom: '20px' }}>
+            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'linear-gradient(135deg, var(--accent-purple) 0%, #6d28d9 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: '800', fontSize: '0.9rem' }}>Ω</div>
             <span style={{ fontFamily: 'var(--font-heading)', fontSize: '1.4rem', fontWeight: '800' }}>OmniBiz <span className="text-gradient-purple">AI</span></span>
           </div>
 
-          <h2 style={{ fontSize: '1.5rem', textAlign: 'center', marginBottom: '24px' }}>
-            {isRegistering ? 'Create Your Account' : 'Welcome Back'}
+          <h2 style={{ fontSize: '1.5rem', textAlign: 'center', marginBottom: '8px' }}>
+            {isRegistering ? 'Choose Your Plan & Sign Up' : 'Welcome Back'}
           </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'center', marginBottom: '24px' }}>
+            {isRegistering ? 'Select your subscription tier to customize your AI operations engine.' : 'Sign in to access your autonomous business dashboard.'}
+          </p>
+
+          {/* Interactive Tier Selection Grid on Registration */}
+          {isRegistering && (
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: '600' }}>
+                Select Subscription Tier:
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px' }}>
+                {signupTiers.map(tier => {
+                  const isSelected = signupTier === tier.id;
+                  return (
+                    <div
+                      key={tier.id}
+                      onClick={() => setSignupTier(tier.id)}
+                      style={{
+                        padding: '12px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        background: isSelected ? 'rgba(139, 92, 246, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                        border: isSelected ? '2px solid var(--accent-purple)' : '1px solid var(--border-glass)',
+                        boxShadow: isSelected ? '0 0 14px rgba(139, 92, 246, 0.25)' : 'none',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: '6px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span className={`badge ${tier.badgeClass}`} style={{ fontSize: '0.6rem', padding: '2px 6px' }}>{tier.badge}</span>
+                        {isSelected && <span style={{ color: 'var(--accent-purple)', fontSize: '0.75rem', fontWeight: 'bold' }}>✓</span>}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: '700', fontSize: '0.9rem', color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{tier.name}</div>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', marginTop: '2px' }}>
+                          <span style={{ fontSize: '1.2rem', fontWeight: '800' }}>{tier.price}</span>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{tier.period}</span>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: '1.3' }}>
+                        {tier.desc}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Email Address</label>
-              <input 
-                type="email" 
-                className="glass-input" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com" 
-              />
-            </div>
+            <div style={{ display: isRegistering ? 'grid' : 'flex', gridTemplateColumns: isRegistering ? '1fr 1fr' : undefined, flexDirection: isRegistering ? undefined : 'column', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Email Address</label>
+                <input 
+                  type="email" 
+                  className="glass-input" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com" 
+                />
+              </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Password</label>
-              <input 
-                type="password" 
-                className="glass-input" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••" 
-              />
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Password</label>
+                <input 
+                  type="password" 
+                  className="glass-input" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••" 
+                />
+              </div>
             </div>
 
             {authError && (
@@ -538,7 +646,7 @@ export default function App() {
             )}
 
             <button type="submit" className="glass-button" style={{ marginTop: '8px' }}>
-              {isRegistering ? 'Sign Up' : 'Sign In'}
+              {isRegistering ? `Sign Up for ${signupTiers.find(t => t.id === signupTier)?.name || 'Plan'}` : 'Sign In'}
             </button>
 
             {/* Instant Admin Demo Login Bypass */}
@@ -575,7 +683,7 @@ export default function App() {
               }}
               style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', textDecoration: 'underline' }}
             >
-              {isRegistering ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
+              {isRegistering ? 'Already have an account? Sign In' : 'Need an account? Choose Tier & Sign Up'}
             </button>
           </div>
 
@@ -642,7 +750,7 @@ export default function App() {
 
   // Onboarding Screen
   if (!onboardingComplete) {
-    return <Onboarding onComplete={handleOnboardingComplete} />;
+    return <Onboarding onComplete={handleOnboardingComplete} initialTier={selectedTier || signupTier || 'pro'} />;
   }
 
   // Dashboard Screen
