@@ -518,13 +518,52 @@ export default function App() {
             </div>
 
             {authError && (
-              <div style={{ color: 'var(--accent-pink)', fontSize: '0.8rem', textAlign: 'center' }}>
-                ⚠️ {authError}
+              <div style={{ color: 'var(--accent-pink)', fontSize: '0.8rem', textAlign: 'center', background: 'rgba(244, 63, 94, 0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(244, 63, 94, 0.3)' }}>
+                <div>⚠️ {authError}</div>
+                {authError.includes('configuration-not-found') && (
+                  <div style={{ marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    Firebase Auth needs Email/Password enabled in your console. 
+                    <br />
+                    <a 
+                      href="https://console.firebase.google.com/project/zany-passkey-d9st9/authentication/providers" 
+                      target="_blank" 
+                      rel="noreferrer"
+                      style={{ color: 'var(--accent-cyan)', textDecoration: 'underline', fontWeight: 'bold', display: 'inline-block', marginTop: '4px' }}
+                    >
+                      Click here to Enable Email/Password in Firebase Console ➔
+                    </a>
+                  </div>
+                )}
               </div>
             )}
 
             <button type="submit" className="glass-button" style={{ marginTop: '8px' }}>
               {isRegistering ? 'Sign Up' : 'Sign In'}
+            </button>
+
+            {/* Instant Admin Demo Login Bypass */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '8px 0' }}>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border-glass)' }}></div>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>OR</span>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border-glass)' }}></div>
+            </div>
+
+            <button 
+              type="button" 
+              className="glass-button glass-button-secondary" 
+              onClick={() => {
+                const mockAdminUser = {
+                  uid: 'admin_demo_prometheonderrius',
+                  email: 'prometheonderrius@gmail.com',
+                  displayName: 'Prometheon Admin'
+                };
+                setUser(mockAdminUser);
+                setPortalMode('ADMIN');
+                addNotification('Logged in via Instant Admin Demo mode.', 'auth');
+              }}
+              style={{ background: 'linear-gradient(135deg, rgba(6,182,212,0.15) 0%, rgba(139,92,246,0.15) 100%)', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)', fontWeight: 'bold', fontSize: '0.85rem' }}
+            >
+              🚀 Instant Admin Demo Login (prometheonderrius@gmail.com)
             </button>
           </form>
 
