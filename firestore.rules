@@ -20,6 +20,8 @@ service cloud.firestore {
       match /campaigns/{docId} { allow read, write: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'prometheonderrius@gmail.com'); }
       match /contracts/{docId} { allow read, write: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'prometheonderrius@gmail.com'); }
       match /notifications/{docId} { allow read, write: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'prometheonderrius@gmail.com'); }
+      match /blackboard/{docId} { allow read, write: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'prometheonderrius@gmail.com'); }
+      match /swarmTelemetry/{docId} { allow read, write: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'prometheonderrius@gmail.com'); }
     }
 
     match /adminChats/{chatId} {

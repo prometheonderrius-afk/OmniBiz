@@ -798,7 +798,7 @@ export default function App() {
             OmniBiz <span className="text-gradient-purple">AI</span>
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <OfflineSyncBadge addNotification={addNotification} />
+            <OfflineSyncBadge addNotification={addNotification} firestoreDb={db} userId={user?.uid} />
             <button 
               onClick={handleSignOut}
               style={{
@@ -818,7 +818,7 @@ export default function App() {
 
         {/* Desktop Header Toolbar */}
         <div className="desktop-only-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
-          <OfflineSyncBadge addNotification={addNotification} />
+          <OfflineSyncBadge addNotification={addNotification} firestoreDb={db} userId={user?.uid} />
           <button 
             className="glass-button glass-button-secondary" 
             onClick={handleSignOut}

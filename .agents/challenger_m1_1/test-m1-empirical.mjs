@@ -303,9 +303,31 @@ test('admin-settings: OPTIONS returns 200', async () => {
   assert.equal(res._getStatus(), 200);
 });
 
+test('admin-settings: PUT returns 405 Method Not Allowed', async () => {
+  const handler = (await import('../../api/admin-settings.js')).default;
+  const { req, res } = createMockReqRes({ method: 'PUT' });
+  await handler(req, res);
+  assert.equal(res._getStatus(), 405);
+  assert.equal(res._getData().error, 'Method not allowed');
+});
+
 // -------------------------------------------------------------
 // 4. API: twilio-missed-call.js
 // -------------------------------------------------------------
+test('twilio-missed-call: OPTIONS returns 200', async () => {
+  const handler = (await import('../../api/twilio-missed-call.js')).default;
+  const { req, res } = createMockReqRes({ method: 'OPTIONS' });
+  await handler(req, res);
+  assert.equal(res._getStatus(), 200);
+});
+
+test('twilio-missed-call: GET returns 405', async () => {
+  const handler = (await import('../../api/twilio-missed-call.js')).default;
+  const { req, res } = createMockReqRes({ method: 'GET' });
+  await handler(req, res);
+  assert.equal(res._getStatus(), 405);
+});
+
 test('twilio-missed-call: missing uid query parameter returns 400', async () => {
   const handler = (await import('../../api/twilio-missed-call.js')).default;
   const { req, res } = createMockReqRes({
@@ -333,6 +355,20 @@ test('twilio-missed-call: non-missed call status returns ignored 200', async () 
 // -------------------------------------------------------------
 // 5. API: twilio-sms-reply.js
 // -------------------------------------------------------------
+test('twilio-sms-reply: OPTIONS returns 200', async () => {
+  const handler = (await import('../../api/twilio-sms-reply.js')).default;
+  const { req, res } = createMockReqRes({ method: 'OPTIONS' });
+  await handler(req, res);
+  assert.equal(res._getStatus(), 200);
+});
+
+test('twilio-sms-reply: GET returns 405', async () => {
+  const handler = (await import('../../api/twilio-sms-reply.js')).default;
+  const { req, res } = createMockReqRes({ method: 'GET' });
+  await handler(req, res);
+  assert.equal(res._getStatus(), 405);
+});
+
 test('twilio-sms-reply: missing parameters returns 400 with TwiML XML', async () => {
   const handler = (await import('../../api/twilio-sms-reply.js')).default;
   const { req, res } = createMockReqRes({
@@ -416,6 +452,20 @@ test('trial-reply-handler: valid request generates 14-day trial credentials', as
 // -------------------------------------------------------------
 // 8. API: send-email.js
 // -------------------------------------------------------------
+test('send-email: OPTIONS returns 200', async () => {
+  const handler = (await import('../../api/send-email.js')).default;
+  const { req, res } = createMockReqRes({ method: 'OPTIONS' });
+  await handler(req, res);
+  assert.equal(res._getStatus(), 200);
+});
+
+test('send-email: GET returns 405', async () => {
+  const handler = (await import('../../api/send-email.js')).default;
+  const { req, res } = createMockReqRes({ method: 'GET' });
+  await handler(req, res);
+  assert.equal(res._getStatus(), 405);
+});
+
 test('send-email: missing parameters returns 400', async () => {
   const handler = (await import('../../api/send-email.js')).default;
   const { req, res } = createMockReqRes({
@@ -426,9 +476,27 @@ test('send-email: missing parameters returns 400', async () => {
   assert.equal(res._getStatus(), 400);
 });
 
+test('send-email: unconfigured RESEND_API_KEY returns 500 with configuration error', async () => {
+  const handler = (await import('../../api/send-email.js')).default;
+  const { req, res } = createMockReqRes({
+    method: 'POST',
+    body: { to: 'test@example.com', subject: 'Test Subject', body: 'Test body message' }
+  });
+  await handler(req, res);
+  assert.equal(res._getStatus(), 500);
+  assert.equal(res._getData().error, 'API Configuration Error');
+});
+
 // -------------------------------------------------------------
 // 9. API: tts.js
 // -------------------------------------------------------------
+test('tts: GET returns 405', async () => {
+  const handler = (await import('../../api/tts.js')).default;
+  const { req, res } = createMockReqRes({ method: 'GET' });
+  await handler(req, res);
+  assert.equal(res._getStatus(), 405);
+});
+
 test('tts: missing text returns 400', async () => {
   const handler = (await import('../../api/tts.js')).default;
   const { req, res } = createMockReqRes({
@@ -438,6 +506,72 @@ test('tts: missing text returns 400', async () => {
   await handler(req, res);
   assert.equal(res._getStatus(), 400);
   assert.equal(res._getData().error, 'Missing text');
+});
+
+test('tts: missing Gemini API key returns 400', async () => {
+  const handler = (await import('../../api/tts.js')).default;
+  const { req, res } = createMockReqRes({
+    method: 'POST',
+    body: { text: 'Hello, this is a test audio message.' }
+  });
+  await handler(req, res);
+  assert.equal(res._getStatus(), 400);
+  assert.equal(res._getData().error, 'Missing Gemini API Key');
+});
+
+// -------------------------------------------------------------
+// 10. API: webchat-message.js
+// -------------------------------------------------------------
+test('webchat-message: OPTIONS returns 200 with CORS headers', async () => {
+  const handler = (await import('../../api/webchat-message.js')).default;
+  const { req, res } = createMockReqRes({ method: 'OPTIONS' });
+  await handler(req, res);
+  assert.equal(res._getStatus(), 200);
+  assert.equal(res._getHeaders()['access-control-allow-origin'], '*');
+});
+
+test('webchat-message: GET returns 405 Method Not Allowed', async () => {
+  const handler = (await import('../../api/webchat-message.js')).default;
+  const { req, res } = createMockReqRes({ method: 'GET' });
+  await handler(req, res);
+  assert.equal(res._getStatus(), 405);
+  assert.equal(res._getData().error, 'Method not allowed');
+});
+
+test('webchat-message: missing uid or text returns 400', async () => {
+  const handler = (await import('../../api/webchat-message.js')).default;
+  const { req, res } = createMockReqRes({
+    method: 'POST',
+    body: { uid: 'user_123' } // missing text
+  });
+  await handler(req, res);
+  assert.equal(res._getStatus(), 400);
+  assert.ok(res._getData().error.includes('uid and text are required'));
+});
+
+// -------------------------------------------------------------
+// 11. API: _utils/gcp.js
+// -------------------------------------------------------------
+test('gcp utils: exports dbAdmin, vertexAI, generateContentVertex, generateAIContent', async () => {
+  const gcp = await import('../../api/_utils/gcp.js');
+  assert.ok('generateContentVertex' in gcp, 'generateContentVertex exported');
+  assert.ok('generateAIContent' in gcp, 'generateAIContent exported');
+  assert.ok('vertexAI' in gcp, 'vertexAI exported');
+  assert.ok('dbAdmin' in gcp, 'dbAdmin exported');
+  assert.equal(typeof gcp.generateContentVertex, 'function');
+  assert.equal(typeof gcp.generateAIContent, 'function');
+});
+
+test('gcp utils: generateAIContent handles unconfigured credentials gracefully', async () => {
+  const { generateAIContent } = await import('../../api/_utils/gcp.js');
+  await assert.rejects(
+    async () => {
+      await generateAIContent('Test prompt', 'Test instruction');
+    },
+    (err) => {
+      return err.message.includes('completions failed or were unconfigured') || err.message.includes('Unable to authenticate');
+    }
+  );
 });
 
 // -------------------------------------------------------------
