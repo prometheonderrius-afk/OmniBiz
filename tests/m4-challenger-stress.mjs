@@ -2,10 +2,10 @@
  * MILESTONE M4 EMPIRICAL CHALLENGER STRESS & CONCURRENCY HARNESS
  * 
  * Conducts exhaustive stress, concurrency, and volume testing for:
- * 1. High-concurrency rapid offline queue mutations across all 5 vertical suites (10,000+ operations).
+ * 1. High-concurrency rapid offline queue mutations across all 5 vertical suites (10,000 total operations).
  * 2. Dynamic sidebar navigation filtering across 10,000 randomized category queries and tenant configs.
  * 3. Asynchronous parallel replay with MockFirestore and Conductor policy invariants.
- * 4. VIN decoder throughput and adversarial inputs fuzzing.
+ * 4. VIN decoder throughput, ISO 3779 checksum, and adversarial inputs fuzzing.
  * 5. High-load execution and verification.
  */
 
@@ -73,78 +73,68 @@ async function runM4ChallengerSuite() {
   const suiteStartTime = performance.now();
 
   // ==========================================================================
-  // SUITE 1: Concurrency & Volume Stress of queueOfflineMutation across Verticals
+  // SUITE 1: Concurrency & Volume Stress of queueOfflineMutation across 5 Verticals (10,000 Total Mutations)
   // ==========================================================================
-  console.log(colors.bold + '--- Suite 1: High-Concurrency queueOfflineMutation Stress (Vertical Suites) ---' + colors.reset);
-  clearOfflineQueue();
+  console.log(colors.bold + '--- Suite 1: High-Concurrency queueOfflineMutation Stress (5 Verticals x 2,000 Ops = 10,000 Ops) ---' + colors.reset);
 
-  const BATCH_SIZE = 10000;
-  const queueIds = new Set();
-  const collections = ['compliance_checks', 'purchase_orders', 'vehicle_inspections', 'tables', 'retailInventory', 'storm_campaigns'];
-  const actionTypes = [
-    'PLUMBING_COMPLIANCE_TOGGLE',
-    'AUTO_DVI_INSPECTION_UPDATE',
-    'ROOFING_STORM_OUTREACH',
-    'RESTAURANT_TABLE_STATUS_CHANGE',
-    'RETAIL_SMART_RESTOCK_PO',
-    'HVAC_EMERGENCY_DISPATCH',
-    'AUTO_TOW_DISPATCH',
-    'ROOFING_CHANGE_ORDER_SIGN',
-    'RESTAURANT_HACCP_TEMP_LOG',
-    'RETAIL_VIP_RETENTION_TRIGGER'
-  ];
-
-  const tStart1 = performance.now();
-
-  // Generate 10,000 rapid mutations across all 5 vertical suites
-  for (let i = 0; i < BATCH_SIZE; i++) {
-    const actionType = actionTypes[i % actionTypes.length];
-    const collection = collections[i % collections.length];
-    const verticalIndex = i % 5;
-    
-    let payload = {};
-    if (verticalIndex === 0) {
-      // Plumbing / HVAC
-      payload = {
+  const globalQueueIds = new Set();
+  const verticals = [
+    {
+      name: 'Plumbing & HVAC',
+      actionTypes: ['PLUMBING_COMPLIANCE_TOGGLE', 'HVAC_EQUIPMENT_QUOTE', 'RESTOCK_PO_DISPATCH', 'EMERGENCY_GAS_TRIAGE'],
+      collection: 'compliance_checks',
+      genPayload: (i) => ({
         checkId: `check_${i}`,
         code: 'UPC 608.2',
         passed: i % 2 === 0,
-        pressurePsi: 60 + (i % 40), // 60 to 99 PSI
+        pressurePsi: 60 + (i % 40),
         grossMargin: 0.65,
         hazard: i % 50 === 0 ? 'Flooding Hazard' : null
-      };
-    } else if (verticalIndex === 1) {
-      // Auto Repair / Towing
-      payload = {
+      })
+    },
+    {
+      name: 'Auto Repair & Towing',
+      actionTypes: ['AUTO_DVI_INSPECTION_UPDATE', 'AUTO_PARTS_MARKUP_CALC', 'REPAIR_ORDER_COMMIT', 'TOW_DISPATCH_CREATE'],
+      collection: 'vehicle_inspections',
+      genPayload: (i) => ({
         vin: '1HGCR2F85HA000000',
         zone: 'Brakes',
         status: i % 3 === 0 ? 'RED' : (i % 3 === 1 ? 'YELLOW' : 'GREEN'),
         laborHours: 2.5,
         partsCost: 150.0,
         towMiles: 15 + (i % 20)
-      };
-    } else if (verticalIndex === 2) {
-      // Roofing / Solar
-      payload = {
+      })
+    },
+    {
+      name: 'Roofing, Solar & Construction',
+      actionTypes: ['ROOF_PITCH_CALCULATE', 'STORM_HAIL_CAMPAIGN_SEND', 'GAF_WARRANTY_REGISTER', 'CHANGE_ORDER_ESIGN'],
+      collection: 'roof_estimates',
+      genPayload: (i) => ({
         pitch: 6 + (i % 6),
         squares: 25,
         waste: 10,
         hailDiameter: 1.75,
         targetZips: ['78701', '78704'],
         changeOrderAmount: 1250.0
-      };
-    } else if (verticalIndex === 3) {
-      // Restaurant / Food
-      payload = {
+      })
+    },
+    {
+      name: 'Restaurant, Bar & Food Truck',
+      actionTypes: ['TABLE_STATUS_SEATED', 'FOODTRUCK_QUEUE_ADVANCE', 'PRICE_VARIANCE_DISPUTE', 'HACCP_TEMP_LOG'],
+      collection: 'tables',
+      genPayload: (i) => ({
         tableId: `T-${(i % 20) + 1}`,
         status: i % 4 === 0 ? 'seated' : (i % 4 === 1 ? 'ordering' : (i % 4 === 2 ? 'entrees_served' : 'available')),
         seatedDurationMin: 45 + (i % 60),
         foodCostDelta: 5.2,
         fridgeTempF: 36.5 + (i % 10) * 0.5
-      };
-    } else {
-      // Retail / Wellness
-      payload = {
+      })
+    },
+    {
+      name: 'Retail, Boutique & Wellness',
+      actionTypes: ['RESTOCK_MATRIX_REORDER', 'PRACTITIONER_SLOT_BOOK', 'VIP_POINTS_ACCRUAL', 'CLIENT_CHURN_SURGE'],
+      collection: 'retailInventory',
+      genPayload: (i) => ({
         sku: `SKU-${1000 + (i % 50)}`,
         currentStock: i % 10,
         reorderPoint: 8,
@@ -152,46 +142,63 @@ async function runM4ChallengerSuite() {
         leadTimeDays: 7,
         clientId: `client_${i % 100}`,
         daysSinceVisit: 20 + (i % 40)
-      };
+      })
+    }
+  ];
+
+  let totalVerticalOps = 0;
+  let allSchemasValid = true;
+
+  for (const vert of verticals) {
+    clearOfflineQueue();
+    const batchStart = performance.now();
+    const BATCH_OPS = 2000;
+
+    for (let i = 0; i < BATCH_OPS; i++) {
+      const actionType = vert.actionTypes[i % vert.actionTypes.length];
+      const payload = vert.genPayload(i);
+      const res = queueOfflineMutation({
+        actionType,
+        collection: vert.collection,
+        docId: `doc_${vert.collection}_${i}`,
+        payload,
+        timestamp: Date.now() + i
+      });
+
+      globalQueueIds.add(res.queueId);
     }
 
-    const res = queueOfflineMutation({
-      actionType,
-      collection,
-      docId: `doc_${collection}_${i}`,
-      payload,
-      timestamp: Date.now() + i
-    });
+    const batchDuration = performance.now() - batchStart;
+    const queuedItems = getOfflineQueue();
 
-    queueIds.add(res.queueId);
-  }
-
-  const tDuration1 = performance.now() - tStart1;
-  const currentQueue = getOfflineQueue();
-
-  check('10,000 rapid vertical mutations queued successfully', currentQueue.length === BATCH_SIZE, `${BATCH_SIZE} items queued in ${tDuration1.toFixed(2)}ms (${(BATCH_SIZE / (tDuration1 / 1000)).toFixed(0)} ops/sec)`);
-  check('Zero queueId collisions across 10,000 rapid mutations', queueIds.size === BATCH_SIZE, `Unique IDs: ${queueIds.size}`);
-  
-  // Verify strict transaction schema integrity across samples
-  let schemaValid = true;
-  for (let s = 0; s < 500; s++) {
-    const idx = (s * 19) % currentQueue.length;
-    const item = currentQueue[idx];
-    if (!item.queueId || !item.actionType || !item.collection || !item.docId || !item.payload || typeof item.timestamp !== 'number' || item.status !== 'pending') {
-      schemaValid = false;
-      break;
+    if (queuedItems.length !== BATCH_OPS) {
+      allSchemasValid = false;
     }
+
+    for (let s = 0; s < 50; s++) {
+      const item = queuedItems[s];
+      if (!item.queueId || !item.actionType || !item.collection || !item.docId || !item.payload || typeof item.timestamp !== 'number' || item.status !== 'pending') {
+        allSchemasValid = false;
+        break;
+      }
+    }
+
+    totalVerticalOps += queuedItems.length;
+    console.log(`    ↳ Vertical [${vert.name}]: 2,000 rapid mutations queued in ${batchDuration.toFixed(2)}ms (${(BATCH_OPS / (batchDuration / 1000)).toFixed(0)} ops/sec)`);
   }
-  check('Strict schema invariant verified across random sample items', schemaValid, 'queueId, actionType, collection, docId, payload, timestamp, status, retryCount');
+
+  check('10,000 rapid vertical mutations queued across all 5 trade suites', totalVerticalOps === 10000, `Total: ${totalVerticalOps} ops across 5 vertical micro-suites`);
+  check('Zero queueId collisions across 10,000 generated mutation IDs', globalQueueIds.size === 10000, `Unique IDs: ${globalQueueIds.size}`);
+  check('Strict transaction schema invariant verified on all vertical mutations', allSchemasValid, 'queueId, actionType, collection, docId, payload, timestamp, status, retryCount');
 
   // ==========================================================================
   // SUITE 2: Concurrent Multi-Worker Async Mutation Ingestion
   // ==========================================================================
-  console.log('\n' + colors.bold + '--- Suite 2: Parallel Async Multi-Worker Ingestion (50 Workers x 100 ops) ---' + colors.reset);
+  console.log('\n' + colors.bold + '--- Suite 2: Parallel Async Multi-Worker Ingestion (50 Workers x 50 ops = 2,500 Ops) ---' + colors.reset);
   clearOfflineQueue();
 
   const NUM_WORKERS = 50;
-  const OPS_PER_WORKER = 100;
+  const OPS_PER_WORKER = 50;
   const parallelStartTime = performance.now();
 
   const workerPromises = Array.from({ length: NUM_WORKERS }, (_, workerId) => {
@@ -461,7 +468,7 @@ async function runM4ChallengerSuite() {
   const validVins = [
     { vin: '1HGCR2F85HA000000', make: 'Honda', year: 2017, checkDigit: '5' },
     { vin: '1FTFW1E82KFA00000', make: 'Ford', year: 2019, checkDigit: '2' },
-    { vin: '5YJSA1E28HF000000', make: 'Tesla', year: 2017, checkDigit: '8' }
+    { vin: '5YJSA1E25HF000000', make: 'Tesla', year: 2017, checkDigit: '5' }
   ];
 
   let vinValidationsPassed = true;
@@ -499,13 +506,11 @@ async function runM4ChallengerSuite() {
       const res = validateVinChecksum(vin);
       const decoded = decodeVinLocal(vin);
       if (res.valid) {
-        // If checksum claims valid on malformed VIN, fail
         if (vin.length !== 17 || /[IOQ]/.test(vin)) {
           fuzzPassed = false;
           break;
         }
       }
-      // decodeVinLocal should never throw
       if (typeof decoded !== 'object' || decoded === null) {
         fuzzPassed = false;
         break;

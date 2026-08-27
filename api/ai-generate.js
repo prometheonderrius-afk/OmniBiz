@@ -215,7 +215,7 @@ Return ONLY a valid JSON object matching this schema:
     }
 
     // 4. LEAD DISCOVERY
-    if (type === 'leads') {
+    if (type === 'leads' || type === 'leadgen') {
       const category = req.body.category || req.body.businessData?.category || 'Local Services';
       const location = req.body.location || req.body.businessData?.location || 'Local Area';
       const zipCode = req.body.zipCode || req.body.businessData?.zipCode || '24011';
@@ -403,6 +403,103 @@ Return ONLY a valid JSON object matching this schema:
       };
 
       const result = safeJsonParse(rawOutput, fallbackIntent);
+      return res.status(200).json(result);
+    }
+
+    // 7. CATALOG GENERATOR
+    if (type === 'catalog') {
+      const { uploadText, posMode, businessData } = req.body;
+      const promptText = `You are OmniBiz AI, a retail and point-of-sale inventory specialist.
+Parse the following raw menu, price sheet, or product listing text for "${businessData?.name || 'Local Business'}":
+"${uploadText}"
+
+Extract 3-8 clean, structured inventory items matching this schema:
+{
+  "items": [
+    {
+      "id": "ai-1",
+      "name": "Item Name",
+      "category": "${posMode === 'restaurant' ? 'Specialties' : 'General Catalog'}",
+      "price": 12.99,
+      "sku": "3001",
+      "stock": 50,
+      "image": "${posMode === 'restaurant' ? '🍽️' : '📦'}"
+    }
+  ]
+}`;
+
+      let rawOutput = '';
+      try {
+        rawOutput = await generateAIContent(
+          promptText,
+          'You are an inventory parsing engine. Return strictly valid JSON.',
+          { responseMimeType: 'application/json', temperature: 0.3, maxTokens: 800 }
+        );
+      } catch (aiErr) {
+        console.warn('Catalog AI generation unavailable:', aiErr.message);
+      }
+
+      const defaultLines = (uploadText || '').split('\n').filter(l => l.trim().length > 0);
+      const fallbackItems = defaultLines.length > 0
+        ? defaultLines.map((line, idx) => {
+            const parts = line.split(/[-–:]/);
+            const name = parts[0]?.trim() || `Product ${idx + 1}`;
+            const rawPrice = parts[1]?.replace(/[^0-9.]/g, '') || (5 + idx * 2.5).toFixed(2);
+            const price = parseFloat(rawPrice) || 9.99;
+            return {
+              id: `item-${idx}-${Date.now()}`,
+              name,
+              category: posMode === 'restaurant' ? 'Specialties' : 'General Catalog',
+              price,
+              sku: String(3000 + idx),
+              stock: 50,
+              image: posMode === 'restaurant' ? '🍽️' : '📦'
+            };
+          })
+        : [
+            { id: 'ai-1', name: 'Standard Service Call', category: 'General Catalog', price: 95.00, sku: '3001', stock: 999, image: '🛠️' }
+          ];
+
+      const parsed = safeJsonParse(rawOutput, { items: fallbackItems });
+      return res.status(200).json(parsed);
+    }
+
+    // 8. AUTOMATION / REVIEW RESPONDER
+    if (type === 'automation' || type === 'review') {
+      const { reviewText, rating, author, platform, businessData, tone } = req.body;
+      const promptText = `You are OmniBiz AI reputation assistant.
+Generate a professional, tone-matched response to this customer review for "${businessData?.name || 'Our Business'}":
+Author: ${author || 'Customer'}
+Platform: ${platform || 'Google Business'}
+Rating: ${rating || 5} Stars
+Review: "${reviewText || 'Great service!'}"
+Desired Tone: ${tone || 'Professional & Grateful'}
+
+Return valid JSON:
+{
+  "replyText": "Personalized response text here",
+  "sentiment": "positive",
+  "status": "Ready to Post"
+}`;
+
+      let rawOutput = '';
+      try {
+        rawOutput = await generateAIContent(
+          promptText,
+          'You are a reputation management copywriter. Return strictly valid JSON.',
+          { responseMimeType: 'application/json', temperature: 0.6, maxTokens: 400 }
+        );
+      } catch (aiErr) {
+        console.warn('Review AI generation unavailable:', aiErr.message);
+      }
+
+      const fallbackReply = {
+        replyText: `Thank you for your feedback! We are thrilled to hear about your positive experience with ${businessData?.name || 'our team'}. We look forward to serving you again!`,
+        sentiment: "positive",
+        status: "Ready to Post"
+      };
+
+      const result = safeJsonParse(rawOutput, fallbackReply);
       return res.status(200).json(result);
     }
 

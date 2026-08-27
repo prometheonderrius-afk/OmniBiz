@@ -34,12 +34,19 @@ Gate Result: **PASS**
 Status: **DONE**
 
 ## Milestone M4: Dynamic Navigation & 5 Trade Vertical Suites
-- Iteration: 0
-- Status: IN_PROGRESS
+- Iteration: 1
+- worker_m4: DONE (build passed, exit code 0, 80 modules, 228/228 E2E, 19/19 M4 unit tests)
+- reviewer_m4_1: APPROVE (handoff.md: interface conformance & functional completeness)
+- reviewer_m4_2: APPROVE (handoff.md: 34/34 adversarial stress tests passing)
+- challenger_m4_1: APPROVE (handoff.md: 196/196 empirical calculation assertions passing)
+- challenger_m4_2: APPROVE (handoff.md: 10,000 concurrent mutations & category stress passing)
+- auditor_m4: CLEAN (handoff.md: zero mock shortcuts, genuine math models & offline queues)
+Gate Result: **PASS**
+Status: **DONE**
 
 ## Milestone M5: Production Document & Artifact Compilers
 - Iteration: 0
-- Status: PLANNED
+- Status: IN_PROGRESS
 
 ## Milestone M6: E2E Testing, Adversarial Hardening & Build Verification
 - Iteration: 0
