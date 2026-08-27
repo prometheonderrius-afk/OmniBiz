@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { queueOfflineMutation } from '../../../utils/offlineSync';
+import { 
+  generateBanquetEventOrderPdfBlob, 
+  generateDisputeCreditMemoPdfBlob, 
+  generateHaccpAuditPdfBlob 
+} from '../../../utils/documentGenerator';
 
 export default function RestaurantBarSuite({
   businessData = {},
@@ -152,6 +157,39 @@ export default function RestaurantBarSuite({
     });
   };
 
+  const handleDownloadDisputePdf = (item) => {
+    const doc = generateDisputeCreditMemoPdfBlob({
+      disputeNumber: `DISP-${item.supplier.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-5)}`,
+      supplier: item.supplier,
+      sku: item.sku,
+      description: item.description,
+      baselinePrice: item.baselinePrice,
+      invoicePrice: item.invoicePrice,
+      varianceAmount: +(item.invoicePrice - item.baselinePrice).toFixed(2),
+      variancePercent: +(((item.invoicePrice - item.baselinePrice) / item.baselinePrice) * 100).toFixed(1),
+      creditMemoAmount: item.disputeCredit,
+      businessData
+    });
+    doc.download();
+    notify(`Downloaded Supplier Dispute Credit Memo PDF ($${item.disputeCredit.toFixed(2)})`, 'system');
+  };
+
+  const handlePrintDispute = (item) => {
+    const doc = generateDisputeCreditMemoPdfBlob({
+      disputeNumber: `DISP-${item.supplier.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-5)}`,
+      supplier: item.supplier,
+      sku: item.sku,
+      description: item.description,
+      baselinePrice: item.baselinePrice,
+      invoicePrice: item.invoicePrice,
+      varianceAmount: +(item.invoicePrice - item.baselinePrice).toFixed(2),
+      variancePercent: +(((item.invoicePrice - item.baselinePrice) / item.baselinePrice) * 100).toFixed(1),
+      creditMemoAmount: item.disputeCredit,
+      businessData
+    });
+    doc.print();
+  };
+
   // --------------------------------------------------------------------------
   // SUB-TAB 3: FDA 2026 / HACCP COLD STORAGE & TEMP LOGS
   // --------------------------------------------------------------------------
@@ -194,6 +232,51 @@ export default function RestaurantBarSuite({
       notificationMsg: `Official HACCP Health Inspection Audit Exported: ${payload.exportId} (1 Critical Temp Alert Logged on Line Prep).`,
       notificationType: payload.hasCriticalViolations ? 'warning' : 'system'
     });
+  };
+
+  const handleDownloadHaccpPdf = () => {
+    const doc = generateHaccpAuditPdfBlob({
+      exportId: `HACCP-AUDIT-${new Date().toISOString().slice(0, 10)}`,
+      auditTitle: 'FDA FSMA & HACCP Daily Food Safety Audit',
+      facilityName: businessData.name || 'OmniBiz Restaurant & Bar',
+      temperatureReadings: haccpUnits.map(u => ({
+        name: u.name,
+        threshold: u.targetRange,
+        temp: u.currentTemp,
+        isViolation: u.isViolation
+      })),
+      sanitationChecks: sanitationChecklist.map(s => ({
+        title: s.task,
+        standard: s.code
+      })),
+      hasCriticalViolations: haccpUnits.some(u => u.isViolation),
+      timestamp: Date.now(),
+      businessData
+    });
+    doc.download();
+    notify(`Downloaded HACCP Health Inspection Audit PDF`, 'system');
+  };
+
+  const handlePrintHaccp = () => {
+    const doc = generateHaccpAuditPdfBlob({
+      exportId: `HACCP-AUDIT-${new Date().toISOString().slice(0, 10)}`,
+      auditTitle: 'FDA FSMA & HACCP Daily Food Safety Audit',
+      facilityName: businessData.name || 'OmniBiz Restaurant & Bar',
+      temperatureReadings: haccpUnits.map(u => ({
+        name: u.name,
+        threshold: u.targetRange,
+        temp: u.currentTemp,
+        isViolation: u.isViolation
+      })),
+      sanitationChecks: sanitationChecklist.map(s => ({
+        title: s.task,
+        standard: s.code
+      })),
+      hasCriticalViolations: haccpUnits.some(u => u.isViolation),
+      timestamp: Date.now(),
+      businessData
+    });
+    doc.print();
   };
 
   // --------------------------------------------------------------------------
@@ -260,6 +343,55 @@ export default function RestaurantBarSuite({
       notificationMsg: `Banquet Event Order (BEO) Dispatched to Kitchen & Service Staff for '${evt.title}' (${evt.guestCount} Guests, $${evt.totalContractValue.toLocaleString()}).`,
       notificationType: 'system'
     });
+  };
+
+  const handleDownloadBeoPdf = (evt) => {
+    const doc = generateBanquetEventOrderPdfBlob({
+      beoDocumentNumber: `BEO-${evt.id}`,
+      eventTitle: evt.title,
+      clientName: evt.clientName,
+      clientPhone: evt.clientPhone,
+      date: evt.date,
+      time: evt.time,
+      space: evt.space,
+      guestCount: evt.guestCount,
+      foodSubtotal: evt.foodSubtotal,
+      beverageSubtotal: evt.beverageSubtotal,
+      roomRentalFee: evt.roomRentalFee,
+      serviceGratuity: evt.serviceGratuity,
+      salesTax: evt.salesTax,
+      totalContractValue: evt.totalContractValue,
+      depositPaid: evt.depositPaid,
+      depositStatus: evt.depositStatus,
+      dietaryNotes: evt.dietaryNotes,
+      businessData
+    });
+    doc.download();
+    notify(`Downloaded Banquet Event Order (BEO) PDF for '${evt.title}'`, 'system');
+  };
+
+  const handlePrintBeo = (evt) => {
+    const doc = generateBanquetEventOrderPdfBlob({
+      beoDocumentNumber: `BEO-${evt.id}`,
+      eventTitle: evt.title,
+      clientName: evt.clientName,
+      clientPhone: evt.clientPhone,
+      date: evt.date,
+      time: evt.time,
+      space: evt.space,
+      guestCount: evt.guestCount,
+      foodSubtotal: evt.foodSubtotal,
+      beverageSubtotal: evt.beverageSubtotal,
+      roomRentalFee: evt.roomRentalFee,
+      serviceGratuity: evt.serviceGratuity,
+      salesTax: evt.salesTax,
+      totalContractValue: evt.totalContractValue,
+      depositPaid: evt.depositPaid,
+      depositStatus: evt.depositStatus,
+      dietaryNotes: evt.dietaryNotes,
+      businessData
+    });
+    doc.print();
   };
 
   return (
@@ -550,14 +682,24 @@ export default function RestaurantBarSuite({
                         ${item.suggestedMenuPrice.toFixed(2)}
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        <button
-                          onClick={() => handleDisputeMemo(item)}
-                          disabled={item.disputeStatus === 'submitted'}
-                          className="glass-button glass-button-pink"
-                          style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                        >
-                          {item.disputeStatus === 'submitted' ? '✓ Memo Sent' : `Dispute $${item.disputeCredit.toFixed(2)}`}
-                        </button>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => handleDownloadDisputePdf(item)}
+                            className="glass-button glass-button-secondary"
+                            style={{ padding: '6px 10px', fontSize: '0.75rem' }}
+                            title="Download Credit Memo PDF"
+                          >
+                            📄 PDF
+                          </button>
+                          <button
+                            onClick={() => handleDisputeMemo(item)}
+                            disabled={item.disputeStatus === 'submitted'}
+                            className="glass-button glass-button-pink"
+                            style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                          >
+                            {item.disputeStatus === 'submitted' ? '✓ Memo Sent' : `Dispute $${item.disputeCredit.toFixed(2)}`}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -635,11 +777,25 @@ export default function RestaurantBarSuite({
           {/* Export Action */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <button
+              onClick={handlePrintHaccp}
+              className="glass-button glass-button-secondary"
+              style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+            >
+              🖨️ Print HACCP Log
+            </button>
+            <button
+              onClick={handleDownloadHaccpPdf}
+              className="glass-button glass-button-purple"
+              style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+            >
+              📄 Download HACCP PDF
+            </button>
+            <button
               onClick={handleExportHaccpLog}
               className="glass-button glass-button-cyan"
               style={{ padding: '10px 20px', fontSize: '0.85rem' }}
             >
-              📄 Export Official HACCP Daily Compliance PDF Audit
+              💾 Record HACCP Audit Log
             </button>
           </div>
         </div>
@@ -689,13 +845,30 @@ export default function RestaurantBarSuite({
                     <span>Total Value: <strong>${evt.totalContractValue.toLocaleString()}</strong></span>
                     <span>Deposit: <strong>${evt.depositPaid.toLocaleString()}</strong></span>
                   </div>
-                  <button
-                    onClick={() => handleDispatchBeo(evt)}
-                    className="glass-button glass-button-purple"
-                    style={{ width: '100%', marginTop: '12px', padding: '8px', fontSize: '0.8rem' }}
-                  >
-                    📋 Dispatch Kitchen Banquet Event Order (BEO)
-                  </button>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr', gap: '8px', marginTop: '12px' }}>
+                    <button
+                      onClick={() => handlePrintBeo(evt)}
+                      className="glass-button glass-button-secondary"
+                      style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                      title="Print BEO"
+                    >
+                      🖨️
+                    </button>
+                    <button
+                      onClick={() => handleDownloadBeoPdf(evt)}
+                      className="glass-button glass-button-cyan"
+                      style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                    >
+                      📄 Download BEO
+                    </button>
+                    <button
+                      onClick={() => handleDispatchBeo(evt)}
+                      className="glass-button glass-button-purple"
+                      style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                    >
+                      📋 Dispatch Kitchen
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

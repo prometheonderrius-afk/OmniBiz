@@ -18,12 +18,13 @@ export default function AdManager({
 
   const triggerAdGeneration = () => {
     setGenerating(true);
-    fetch('/api/generate-ad', {
+    fetch('/api/ai-generate?type=ad', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        type: 'ad',
         businessData,
         platform,
         budget,

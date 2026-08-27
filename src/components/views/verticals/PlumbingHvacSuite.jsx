@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { evaluateConductorRules } from '../../../utils/conductorRules';
 import { queueOfflineMutation } from '../../../utils/offlineSync';
+import { 
+  generateMilestoneProposalPdfBlob, 
+  generateComplianceCertificatePdfBlob 
+} from '../../../utils/documentGenerator';
 
 export default function PlumbingHvacSuite({
   businessData = {},
@@ -99,6 +103,37 @@ export default function PlumbingHvacSuite({
       notificationMsg: `UPC/NEC Certificate Saved: ${complianceScore}% Score. ${isOverpressure ? '⚠️ PRV Valve Overpressure Warning Logged!' : '✅ All Invariants Passed.'}`,
       notificationType: isOverpressure ? 'warning' : 'system'
     });
+  };
+
+  const handleDownloadCompliancePdf = () => {
+    const doc = generateComplianceCertificatePdfBlob({
+      jobAddress: '1044 Barton Springs Rd, Austin, TX',
+      masterTechLicense: 'M-39821-TX',
+      pipePressurePsi: pressureNum,
+      isOverpressure,
+      complianceScore,
+      passedCount,
+      totalCount: complianceChecklist.length,
+      checks: complianceChecklist,
+      businessData
+    });
+    doc.download();
+    notify(`Downloaded UPC/NEC Compliance Certificate (${complianceScore}%)`, 'system');
+  };
+
+  const handlePrintCompliance = () => {
+    const doc = generateComplianceCertificatePdfBlob({
+      jobAddress: '1044 Barton Springs Rd, Austin, TX',
+      masterTechLicense: 'M-39821-TX',
+      pipePressurePsi: pressureNum,
+      isOverpressure,
+      complianceScore,
+      passedCount,
+      totalCount: complianceChecklist.length,
+      checks: complianceChecklist,
+      businessData
+    });
+    doc.print();
   };
 
   // --------------------------------------------------------------------------
@@ -241,6 +276,50 @@ export default function PlumbingHvacSuite({
       notificationMsg: `Milestone Quote Sent via SMS to ${payload.customerPhone}: $${totalPrice.toLocaleString()} (${(calculatedGrossMargin * 100).toFixed(1)}% Gross Margin).`,
       notificationType: isMarginBreach ? 'warning' : 'system'
     });
+  };
+
+  const handleDownloadProposalPdf = () => {
+    const doc = generateMilestoneProposalPdfBlob({
+      customerName: 'Sarah Jenkins',
+      customerPhone: '(512) 555-8921',
+      customerEmail: 's.jenkins@example.com',
+      jobAddress: '1044 Barton Springs Rd, Austin, TX',
+      selectedTier: selectedQuoteOption,
+      equipmentCost: rawCost,
+      laborHours: 14,
+      laborRate: 150,
+      totalPrice,
+      grossMarginPercent: (calculatedGrossMargin * 100).toFixed(1),
+      milestones: [
+        { phase: 'Stage 1: Mobilization & Equipment Deposit (40%)', amount: milestoneDeposit, status: 'Due upon contract execution' },
+        { phase: 'Stage 2: Rough-In & Refrigerant Lineset (40%)', amount: milestoneRoughIn, status: 'Due upon rough-in pass' },
+        { phase: 'Stage 3: Final Commissioning & Signoff (20%)', amount: milestoneFinal, status: 'Due upon completed inspection' }
+      ],
+      financingOptions: [
+        { term: '0% APR for 36 Months', monthlyPayment: Math.round(totalPrice / 36) },
+        { term: '7.99% APR for 84 Months', monthlyPayment: Math.round((totalPrice * 1.30) / 84) }
+      ],
+      businessData
+    });
+    doc.download();
+    notify(`Downloaded Milestone Proposal PDF ($${totalPrice.toLocaleString()})`, 'system');
+  };
+
+  const handlePrintProposal = () => {
+    const doc = generateMilestoneProposalPdfBlob({
+      customerName: 'Sarah Jenkins',
+      customerPhone: '(512) 555-8921',
+      selectedTier: selectedQuoteOption,
+      totalPrice,
+      grossMarginPercent: (calculatedGrossMargin * 100).toFixed(1),
+      milestones: [
+        { phase: 'Stage 1: Deposit (40%)', amount: milestoneDeposit },
+        { phase: 'Stage 2: Rough-In (40%)', amount: milestoneRoughIn },
+        { phase: 'Stage 3: Final (20%)', amount: milestoneFinal }
+      ],
+      businessData
+    });
+    doc.print();
   };
 
   // --------------------------------------------------------------------------
@@ -528,11 +607,25 @@ export default function PlumbingHvacSuite({
           {/* Action Footer */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px' }}>
             <button
+              onClick={handlePrintCompliance}
+              className="glass-button glass-button-secondary"
+              style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+            >
+              🖨️ Print Certificate
+            </button>
+            <button
+              onClick={handleDownloadCompliancePdf}
+              className="glass-button glass-button-purple"
+              style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+            >
+              📄 Download PDF Certificate
+            </button>
+            <button
               onClick={handleSaveCompliance}
               className="glass-button glass-button-cyan"
               style={{ padding: '10px 20px', fontSize: '0.85rem' }}
             >
-              💾 Save & Certify Compliance Check
+              💾 Save &amp; Certify Compliance Check
             </button>
           </div>
         </div>
@@ -785,11 +878,25 @@ export default function PlumbingHvacSuite({
           {/* Dispatch Quote Button */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <button
+              onClick={handlePrintProposal}
+              className="glass-button glass-button-secondary"
+              style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+            >
+              🖨️ Print Proposal
+            </button>
+            <button
+              onClick={handleDownloadProposalPdf}
+              className="glass-button glass-button-cyan"
+              style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+            >
+              📄 Download Proposal PDF
+            </button>
+            <button
               onClick={handleDispatchQuote}
               className="glass-button glass-button-purple"
               style={{ padding: '10px 20px', fontSize: '0.85rem' }}
             >
-              📱 Dispatch Good/Better/Best Milestone Quote via SMS ($ {totalPrice.toLocaleString()})
+              📱 Dispatch Good/Better/Best Milestone Quote via SMS (${totalPrice.toLocaleString()})
             </button>
           </div>
         </div>

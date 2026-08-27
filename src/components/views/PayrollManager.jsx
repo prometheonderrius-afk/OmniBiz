@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { generatePaystubPdfBlob } from '../../utils/documentGenerator';
 
 export default function PayrollManager({ businessData = {}, addNotification }) {
   const employees = businessData.employees || [
@@ -17,6 +18,7 @@ export default function PayrollManager({ businessData = {}, addNotification }) {
   const [selectedStaff, setSelectedStaff] = useState(employees[0]?.name || '');
   const [pinInput, setPinInput] = useState('');
   const [paystubModal, setPaystubModal] = useState(null);
+  const [activePaystubDoc, setActivePaystubDoc] = useState(null);
 
   // Clock In/Out action
   const handleClockToggle = (isClockIn) => {
@@ -42,7 +44,6 @@ export default function PayrollManager({ businessData = {}, addNotification }) {
         status: 'Active Shift'
       };
       setShifts([newShift, ...shifts]);
-      alert(`Clock-In recorded for ${selectedStaff}!`);
       if (addNotification) addNotification(`Shift started: ${selectedStaff} clocked in.`, 'system');
     } else {
       setShifts(shifts.map(s => {
@@ -56,33 +57,81 @@ export default function PayrollManager({ businessData = {}, addNotification }) {
         }
         return s;
       }));
-      alert(`Clock-Out recorded for ${selectedStaff}!`);
       if (addNotification) addNotification(`Shift ended: ${selectedStaff} clocked out.`, 'system');
     }
     setPinInput('');
   };
 
-  // Generate Paystub
-  const handleGeneratePaystub = (emp) => {
+  // Helper to compile full paystub document
+  const buildPaystubData = (emp) => {
     const hourlyRate = emp.rate || 20.00;
     const regHours = 40;
     const otHours = 5;
-    const grossPay = (regHours * hourlyRate) + (otHours * hourlyRate * 1.5);
-    const taxes = grossPay * 0.15;
-    const netPay = grossPay - taxes;
+    const regularPay = regHours * hourlyRate;
+    const overtimePay = otHours * hourlyRate * 1.5;
+    const grossPay = regularPay + overtimePay;
+    
+    // Itemized statutory withholdings
+    const fitTax = grossPay * 0.0765;
+    const ficaTax = grossPay * 0.0535;
+    const stateTax = grossPay * 0.0200;
+    const totalDeductions = fitTax + ficaTax + stateTax;
+    const netPay = grossPay - totalDeductions;
 
-    setPaystubModal({
+    const deductions = [
+      { name: 'Federal Income Tax (FIT)', amount: fitTax },
+      { name: 'FICA (Social Security & Medicare)', amount: ficaTax },
+      { name: 'State & Local Withholding (SIT)', amount: stateTax }
+    ];
+
+    const payPeriod = 'Bi-Weekly (Jul 15 - Jul 28, 2026)';
+    const company = businessData.name || 'OmniBiz Operations Corp';
+
+    const doc = generatePaystubPdfBlob({
+      employeeName: emp.name,
+      role: emp.role,
+      payPeriod,
+      regularHours: regHours,
+      overtimeHours: otHours,
+      hourlyRate,
+      grossPay,
+      deductions,
+      taxes: totalDeductions,
+      netPay,
+      company,
+      date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+    });
+
+    return {
       employee: emp.name,
       role: emp.role,
-      period: 'Bi-Weekly (Jul 15 - Jul 28)',
+      period: payPeriod,
       hourlyRate,
       regHours,
       otHours,
+      regularPay,
+      overtimePay,
       grossPay,
-      taxes,
+      deductions,
+      taxes: totalDeductions,
       netPay,
-      company: businessData.name || 'OmniBiz Client'
-    });
+      company,
+      doc
+    };
+  };
+
+  const handleGeneratePaystub = (emp) => {
+    const data = buildPaystubData(emp);
+    setActivePaystubDoc(data.doc);
+    setPaystubModal(data);
+  };
+
+  const handleDirectDownloadPaystub = (emp) => {
+    const data = buildPaystubData(emp);
+    data.doc.download();
+    if (addNotification) {
+      addNotification(`Paystub PDF generated and downloaded for ${emp.name}.`, 'system');
+    }
   };
 
   // Export Payroll to CSV
@@ -101,7 +150,9 @@ export default function PayrollManager({ businessData = {}, addNotification }) {
     a.href = url;
     a.download = `OmniBiz_Payroll_${Date.now()}.csv`;
     a.click();
-    alert("Payroll manifest exported to CSV!");
+    if (addNotification) {
+      addNotification("Payroll manifest exported to CSV.", "system");
+    }
   };
 
   return (
@@ -232,13 +283,22 @@ export default function PayrollManager({ businessData = {}, addNotification }) {
                   <td style={{ fontWeight: 'bold' }}>${gross.toFixed(2)}</td>
                   <td style={{ fontWeight: 'bold', color: 'var(--accent-emerald)' }}>${net.toFixed(2)}</td>
                   <td>
-                    <button 
-                      className="glass-button glass-button-secondary" 
-                      style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                      onClick={() => handleGeneratePaystub(emp)}
-                    >
-                      📄 Generate Paystub
-                    </button>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button 
+                        className="glass-button glass-button-secondary" 
+                        style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                        onClick={() => handleGeneratePaystub(emp)}
+                      >
+                        👁️ View Paystub
+                      </button>
+                      <button 
+                        className="glass-button glass-button-purple" 
+                        style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                        onClick={() => handleDirectDownloadPaystub(emp)}
+                      >
+                        📄 Download PDF
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -247,10 +307,10 @@ export default function PayrollManager({ businessData = {}, addNotification }) {
         </table>
       </div>
 
-      {/* Paystub Modal */}
+      {/* Paystub Modal with Real Download & Print */}
       {paystubModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}>
-          <div className="glass-card" style={{ maxWidth: '440px', width: '100%', padding: '24px', background: '#090d16', color: '#fff' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, padding: '20px' }}>
+          <div className="glass-card" style={{ maxWidth: '480px', width: '100%', padding: '24px', background: '#090d16', color: '#fff' }}>
             <div style={{ borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px', marginBottom: '12px', textAlign: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{paystubModal.company}</h3>
               <div style={{ fontSize: '0.8rem', color: 'var(--accent-purple)', fontWeight: 'bold' }}>EARNINGS STATEMENT / PAYSTUB</div>
@@ -278,14 +338,23 @@ export default function PayrollManager({ businessData = {}, addNotification }) {
                 <span style={{ color: 'var(--text-secondary)' }}>Overtime Hours (5 hrs @ 1.5x):</span>
                 <span>${(paystubModal.hourlyRate * 5 * 1.5).toFixed(2)}</span>
               </div>
+              
               <div style={{ borderTop: '1px dashed #444', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
                 <span>Gross Pay:</span>
                 <span>${paystubModal.grossPay.toFixed(2)}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--accent-pink)' }}>
-                <span>Est. Tax &amp; Deductions (15%):</span>
-                <span>-${paystubModal.taxes.toFixed(2)}</span>
+
+              {/* Deductions Breakdown */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-glass)' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--accent-pink)', marginBottom: '4px' }}>STATUTORY WITHHOLDINGS:</div>
+                {paystubModal.deductions?.map((d, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    <span>{d.name}:</span>
+                    <span>-${d.amount.toFixed(2)}</span>
+                  </div>
+                ))}
               </div>
+
               <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--accent-emerald)' }}>
                 <span>NET DIRECT DEPOSIT:</span>
                 <span>${paystubModal.netPay.toFixed(2)}</span>
@@ -294,7 +363,8 @@ export default function PayrollManager({ businessData = {}, addNotification }) {
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button className="glass-button glass-button-secondary" onClick={() => setPaystubModal(null)}>Close</button>
-              <button className="glass-button" style={{ background: 'var(--accent-purple)' }} onClick={() => { alert("Print dialog triggered for paystub."); setPaystubModal(null); }}>Print Paystub</button>
+              <button className="glass-button glass-button-cyan" onClick={() => activePaystubDoc?.print()}>🖨️ Print Paystub</button>
+              <button className="glass-button glass-button-purple" onClick={() => activePaystubDoc?.download()}>⬇️ Download PDF</button>
             </div>
           </div>
         </div>

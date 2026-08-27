@@ -184,12 +184,13 @@ Owner, ${businessData.name || 'OmniBiz Client'}`);
     setScrapeStep('Running Vertex AI local prospect discovery...');
 
     try {
-      const response = await fetch('/api/discover-leads', {
+      const response = await fetch('/api/ai-generate?type=leads', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          type: 'leads',
           category: businessData.category,
           location: businessData.location,
           businessData

@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
 import { queueOfflineMutation } from '../../../utils/offlineSync';
+import { 
+  generateChangeOrderPdfBlob, 
+  generateWarrantyRegistrationPdfBlob, 
+  generateRoofSolarProposalPdfBlob 
+} from '../../../utils/documentGenerator';
 
 export default function RoofingSolarSuite({
   businessData = {},
@@ -99,6 +104,49 @@ export default function RoofingSolarSuite({
     });
   };
 
+  const handleDownloadTakeoffPdf = () => {
+    const doc = generateRoofSolarProposalPdfBlob({
+      customerName: homeownerName || 'Homeowner',
+      propertyAddress: roofAddress || 'Residential Property',
+      footprintSqFt,
+      pitchInches: `${pitchInches}/12`,
+      pitchMultiplier: +pitchMultiplier.toFixed(4),
+      actualSurfaceSqFt,
+      squaresWithWaste,
+      shingleBundles,
+      underlaymentRolls,
+      solarSystemKwDc,
+      estimatedPanelCount,
+      annualGenerationKwh,
+      annualElectricSavings,
+      netSolarCost,
+      businessData
+    });
+    doc.download();
+    notify(`Downloaded Aerial Takeoff & Solar Proposal PDF`, 'system');
+  };
+
+  const handlePrintTakeoff = () => {
+    const doc = generateRoofSolarProposalPdfBlob({
+      customerName: homeownerName || 'Homeowner',
+      propertyAddress: roofAddress || 'Residential Property',
+      footprintSqFt,
+      pitchInches: `${pitchInches}/12`,
+      pitchMultiplier: +pitchMultiplier.toFixed(4),
+      actualSurfaceSqFt,
+      squaresWithWaste,
+      shingleBundles,
+      underlaymentRolls,
+      solarSystemKwDc,
+      estimatedPanelCount,
+      annualGenerationKwh,
+      annualElectricSavings,
+      netSolarCost,
+      businessData
+    });
+    doc.print();
+  };
+
   // --------------------------------------------------------------------------
   // SUB-TAB 2: SEVERE WEATHER STORM & HAIL LEAD OUTREACH
   // --------------------------------------------------------------------------
@@ -195,6 +243,45 @@ export default function RoofingSolarSuite({
     });
   };
 
+  const handleDownloadWarrantyPdf = () => {
+    const doc = generateWarrantyRegistrationPdfBlob({
+      ownerName: homeownerName || 'Robert & Linda Chen',
+      propertyAddress: roofAddress || '3210 Barton Skyway, Austin, TX',
+      systemType: `${manufacturer} ${warrantyTier}`,
+      shingles: 'GAF Timberline HDZ (Color: Charcoal)',
+      installerCert: installerId || 'ME-GAF-99421',
+      manufacturer,
+      warrantyTier,
+      registrationId: `WR-${manufacturer}-${Date.now().toString().slice(-6)}`,
+      components: warrantyParts.map(p => ({
+        name: p.name,
+        product: p.brandModel
+      })),
+      businessData
+    });
+    doc.download();
+    notify(`Downloaded Official ${manufacturer} Warranty Certificate PDF`, 'system');
+  };
+
+  const handlePrintWarranty = () => {
+    const doc = generateWarrantyRegistrationPdfBlob({
+      ownerName: homeownerName || 'Robert & Linda Chen',
+      propertyAddress: roofAddress || '3210 Barton Skyway, Austin, TX',
+      systemType: `${manufacturer} ${warrantyTier}`,
+      shingles: 'GAF Timberline HDZ',
+      installerCert: installerId || 'ME-GAF-99421',
+      manufacturer,
+      warrantyTier,
+      registrationId: `WR-${manufacturer}-${Date.now().toString().slice(-6)}`,
+      components: warrantyParts.map(p => ({
+        name: p.name,
+        product: p.brandModel
+      })),
+      businessData
+    });
+    doc.print();
+  };
+
   // --------------------------------------------------------------------------
   // SUB-TAB 4: CONSTRUCTION CHANGE-ORDER BUILDER & E-SIGNATURE
   // --------------------------------------------------------------------------
@@ -236,6 +323,41 @@ export default function RoofingSolarSuite({
       notificationMsg: `Change Order ${payload.changeOrderNumber} Executed: Revised Contract Total: $${revisedTotalContractValue.toLocaleString()} (+$${totalAddedScopeCost.toLocaleString()}, E-Signed by ${signerName}).`,
       notificationType: 'system'
     });
+  };
+
+  const handleDownloadChangeOrderPdf = () => {
+    const doc = generateChangeOrderPdfBlob({
+      changeOrderNumber: `CO-001-${Date.now().toString().slice(-4)}`,
+      propertyAddress: roofAddress || '3210 Barton Skyway, Austin, TX',
+      originalContractValue,
+      totalAddedScopeCost,
+      revisedTotalContractValue,
+      totalAddedWorkingDays,
+      items: changeOrderItems,
+      signerName,
+      signedDate,
+      signatureAuditHash: `SHA256-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+      businessData
+    });
+    doc.download();
+    notify(`Downloaded Change Order PDF (Revised Total: $${revisedTotalContractValue.toLocaleString()})`, 'system');
+  };
+
+  const handlePrintChangeOrder = () => {
+    const doc = generateChangeOrderPdfBlob({
+      changeOrderNumber: `CO-001-${Date.now().toString().slice(-4)}`,
+      propertyAddress: roofAddress || '3210 Barton Skyway, Austin, TX',
+      originalContractValue,
+      totalAddedScopeCost,
+      revisedTotalContractValue,
+      totalAddedWorkingDays,
+      items: changeOrderItems,
+      signerName,
+      signedDate,
+      signatureAuditHash: `SHA256-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+      businessData
+    });
+    doc.print();
   };
 
   return (
@@ -443,11 +565,25 @@ export default function RoofingSolarSuite({
           {/* Action Dispatch */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <button
+              onClick={handlePrintTakeoff}
+              className="glass-button glass-button-secondary"
+              style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+            >
+              🖨️ Print Takeoff
+            </button>
+            <button
+              onClick={handleDownloadTakeoffPdf}
+              className="glass-button glass-button-purple"
+              style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+            >
+              📄 Download Takeoff PDF
+            </button>
+            <button
               onClick={handleSaveTakeoff}
               className="glass-button glass-button-cyan"
               style={{ padding: '10px 20px', fontSize: '0.85rem' }}
             >
-              💾 Save Roof & Solar Material Take-Off
+              💾 Save Roof &amp; Solar Material Take-Off
             </button>
           </div>
         </div>
@@ -638,6 +774,20 @@ export default function RoofingSolarSuite({
           {/* Submit Action */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <button
+              onClick={handlePrintWarranty}
+              className="glass-button glass-button-secondary"
+              style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+            >
+              🖨️ Print Warranty
+            </button>
+            <button
+              onClick={handleDownloadWarrantyPdf}
+              className="glass-button glass-button-purple"
+              style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+            >
+              📄 Download Warranty PDF
+            </button>
+            <button
               onClick={handleSubmitWarranty}
               disabled={!isWarrantyEligible}
               className="glass-button glass-button-cyan"
@@ -742,12 +892,26 @@ export default function RoofingSolarSuite({
           {/* Action Dispatch */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <button
+              onClick={handlePrintChangeOrder}
+              className="glass-button glass-button-secondary"
+              style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+            >
+              🖨️ Print Change Order
+            </button>
+            <button
+              onClick={handleDownloadChangeOrderPdf}
+              className="glass-button glass-button-cyan"
+              style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+            >
+              📄 Download Change Order PDF
+            </button>
+            <button
               onClick={handleExecuteChangeOrder}
               disabled={!signerName}
               className="glass-button glass-button-purple"
               style={{ padding: '10px 20px', fontSize: '0.85rem' }}
             >
-              ✍️ Execute & Transmit Change Order (${revisedTotalContractValue.toLocaleString()})
+              ✍️ Execute &amp; Transmit Change Order (${revisedTotalContractValue.toLocaleString()})
             </button>
           </div>
         </div>

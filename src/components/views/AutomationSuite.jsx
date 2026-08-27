@@ -98,6 +98,36 @@ export default function AutomationSuite({
     addNotification(`Review Engine: Posted tone-matched reply to ${rev?.author}'s ${rev?.source} review.`, "review");
   };
 
+  // Live Vertex AI Tone Regeneration
+  const handleRegenerateReviewReply = async (review) => {
+    try {
+      const res = await fetch('/api/ai-generate?type=review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'review',
+          reviewText: review.comment,
+          rating: review.rating,
+          author: review.author,
+          platform: review.source,
+          businessData
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.replyText) {
+          setReviews(prev => {
+            const list = prev && prev.length > 0 ? prev : activeReviews;
+            return list.map(r => r.id === review.id ? { ...r, replyDraft: data.replyText } : r);
+          });
+          addNotification(`Review Engine: Generated fresh tone-matched response for ${review.author}.`, 'review');
+        }
+      }
+    } catch (err) {
+      console.warn("Review AI generation error:", err);
+    }
+  };
+
   // Dispatch Review Request via SMS
   const handleDispatchReviewRequest = () => {
     if (!reviewCustomerPhone) {
@@ -302,6 +332,9 @@ export default function AutomationSuite({
 
                     {review.status === 'Pending Review' && (
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button className="glass-button glass-button-secondary" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => handleRegenerateReviewReply(review)}>
+                          ✨ Regenerate
+                        </button>
                         <button className="glass-button glass-button-cyan" style={{ padding: '6px 16px', fontSize: '0.75rem' }} onClick={() => handleApproveReview(review.id)}>
                           Post Response to {review.source}
                         </button>

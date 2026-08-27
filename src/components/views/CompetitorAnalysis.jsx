@@ -16,10 +16,11 @@ export default function CompetitorAnalysis({
 
     setAnalyzing(true);
     try {
-      const response = await fetch('/api/competitor-analysis', {
+      const response = await fetch('/api/ai-generate?type=competitor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          type: 'competitor',
           businessData,
           category: businessData.category,
           location: businessData.location

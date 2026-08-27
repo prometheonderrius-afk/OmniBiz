@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { decodeVin, validateVinChecksum } from '../../../utils/vinDecoder';
 import { evaluateConductorRules } from '../../../utils/conductorRules';
 import { queueOfflineMutation } from '../../../utils/offlineSync';
+import { 
+  generateRepairOrderPdfBlob, 
+  generateDviReportPdfBlob 
+} from '../../../utils/documentGenerator';
 
 export default function AutoRepairSuite({
   businessData = {},
@@ -189,6 +193,29 @@ export default function AutoRepairSuite({
     });
   };
 
+  const handleDownloadDviPdf = () => {
+    const doc = generateDviReportPdfBlob({
+      vehicleProfile,
+      healthScore: dviHealthScore,
+      counts: { green: greenCount, yellow: yellowCount, red: redCount },
+      allItems: dviItems,
+      businessData
+    });
+    doc.download();
+    notify(`Downloaded DVI Report PDF (${dviHealthScore}% Score)`, 'system');
+  };
+
+  const handlePrintDvi = () => {
+    const doc = generateDviReportPdfBlob({
+      vehicleProfile,
+      healthScore: dviHealthScore,
+      counts: { green: greenCount, yellow: yellowCount, red: redCount },
+      allItems: dviItems,
+      businessData
+    });
+    doc.print();
+  };
+
   // --------------------------------------------------------------------------
   // SUB-TAB 3: MITCHELL / ALLDATA ESTIMATOR & PARTS MARKUP
   // --------------------------------------------------------------------------
@@ -255,6 +282,58 @@ export default function AutoRepairSuite({
       notificationMsg: `Repair Order ${payload.roNumber} Dispatched: $${grandTotalEstimate.toLocaleString()} (${(grossMargin * 100).toFixed(1)}% Gross Margin).`,
       notificationType: 'system'
     });
+  };
+
+  const handleDownloadRoPdf = () => {
+    const doc = generateRepairOrderPdfBlob({
+      roNumber: `RO-2026-${Date.now().toString().slice(-5)}`,
+      vehicleProfile,
+      customerName: vehicleProfile.customerName,
+      customerPhone: vehicleProfile.customerPhone,
+      laborRate: hourlyRate,
+      totalLaborHours,
+      totalLaborPrice,
+      partsRetailTotal: totalPartsRetail,
+      shopSuppliesFee,
+      estimatedTax,
+      grandTotalEstimate,
+      grossMargin: (grossMargin * 100).toFixed(1),
+      lineItems: roLineItems.map(item => ({
+        service: item.description,
+        laborHours: item.laborHours,
+        laborCost: item.laborHours * hourlyRate,
+        partsRetail: calculateRetailPartsPrice(item.partsWholesaleCost),
+        totalLine: (item.laborHours * hourlyRate) + calculateRetailPartsPrice(item.partsWholesaleCost)
+      })),
+      businessData
+    });
+    doc.download();
+    notify(`Downloaded Repair Order (RO) PDF ($${grandTotalEstimate.toLocaleString()})`, 'system');
+  };
+
+  const handlePrintRo = () => {
+    const doc = generateRepairOrderPdfBlob({
+      roNumber: `RO-2026-${Date.now().toString().slice(-5)}`,
+      vehicleProfile,
+      customerName: vehicleProfile.customerName,
+      laborRate: hourlyRate,
+      totalLaborHours,
+      totalLaborPrice,
+      partsRetailTotal: totalPartsRetail,
+      shopSuppliesFee,
+      estimatedTax,
+      grandTotalEstimate,
+      grossMargin: (grossMargin * 100).toFixed(1),
+      lineItems: roLineItems.map(item => ({
+        service: item.description,
+        laborHours: item.laborHours,
+        laborCost: item.laborHours * hourlyRate,
+        partsRetail: calculateRetailPartsPrice(item.partsWholesaleCost),
+        totalLine: (item.laborHours * hourlyRate) + calculateRetailPartsPrice(item.partsWholesaleCost)
+      })),
+      businessData
+    });
+    doc.print();
   };
 
   // --------------------------------------------------------------------------
@@ -596,6 +675,20 @@ export default function AutoRepairSuite({
           {/* Action Dispatch */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <button
+              onClick={handlePrintDvi}
+              className="glass-button glass-button-secondary"
+              style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+            >
+              🖨️ Print DVI
+            </button>
+            <button
+              onClick={handleDownloadDviPdf}
+              className="glass-button glass-button-purple"
+              style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+            >
+              📄 Download DVI PDF
+            </button>
+            <button
               onClick={handleDispatchDviReport}
               className="glass-button glass-button-cyan"
               style={{ padding: '10px 20px', fontSize: '0.85rem' }}
@@ -714,11 +807,25 @@ export default function AutoRepairSuite({
           {/* Action Dispatch */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <button
+              onClick={handlePrintRo}
+              className="glass-button glass-button-secondary"
+              style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+            >
+              🖨️ Print RO
+            </button>
+            <button
+              onClick={handleDownloadRoPdf}
+              className="glass-button glass-button-purple"
+              style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+            >
+              📄 Download RO PDF
+            </button>
+            <button
               onClick={handleDispatchRoEstimate}
               className="glass-button glass-button-cyan"
               style={{ padding: '10px 20px', fontSize: '0.85rem' }}
             >
-              📱 Dispatch Customer Estimate via SMS ($ {grandTotalEstimate.toLocaleString()})
+              📱 Dispatch Customer Estimate via SMS (${grandTotalEstimate.toLocaleString()})
             </button>
           </div>
         </div>
