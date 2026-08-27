@@ -253,7 +253,7 @@ export function sanitizeFilename(str) {
  */
 export function createDocumentBlob(htmlContent, defaultFilename = 'OmniBiz_Document.html') {
   const safeHtml = String(htmlContent || '<!DOCTYPE html><html><body>Document</body></html>');
-  const safeFilename = sanitizeFilename(defaultFilename);
+  const safeFilename = defaultFilename || 'OmniBiz_Document.html';
 
   const blob = typeof Blob !== 'undefined'
     ? new Blob([safeHtml], { type: 'text/html;charset=utf-8' })
