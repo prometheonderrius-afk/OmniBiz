@@ -46,6 +46,13 @@ import FluidMicroUI from './components/views/FluidMicroUI';
 import CashflowGuard from './components/views/CashflowGuard';
 import OfflineSyncBadge from './components/OfflineSyncBadge';
 
+import PlumbingHvacSuite from './components/views/verticals/PlumbingHvacSuite';
+import AutoRepairSuite from './components/views/verticals/AutoRepairSuite';
+import RoofingSolarSuite from './components/views/verticals/RoofingSolarSuite';
+import RestaurantBarSuite from './components/views/verticals/RestaurantBarSuite';
+import RetailWellnessSuite from './components/views/verticals/RetailWellnessSuite';
+import { getVerticalKey } from './utils/verticalHelpers';
+
 import ShowcaseRecorder from './components/ShowcaseRecorder';
 
 export default function App() {
@@ -870,8 +877,41 @@ export default function App() {
                     }
                   }}
                   isFeatureLocked={isFeatureLocked}
+                  setActiveTab={setActiveTab}
                 />
               );
+
+            // DYNAMIC TRADE VERTICAL SUITE ROUTE
+            case 'vertical_suite': {
+              const vKey = getVerticalKey(businessData.category);
+              const commonProps = {
+                businessData,
+                onAddNotification: addNotification,
+                addNotification,
+                firestoreDb: db,
+                userId: user.uid,
+                selectedTier,
+                setActiveTab
+              };
+
+              if (vKey === 'plumbing_hvac') return <PlumbingHvacSuite {...commonProps} />;
+              if (vKey === 'auto_repair') return <AutoRepairSuite {...commonProps} />;
+              if (vKey === 'roofing_construction') return <RoofingSolarSuite {...commonProps} />;
+              if (vKey === 'restaurant_food') return <RestaurantBarSuite {...commonProps} />;
+              return <RetailWellnessSuite {...commonProps} />;
+            }
+
+            // DIRECT VERTICAL SUITE ROUTES (For Admin testing and deep-linking)
+            case 'vertical_plumbing':
+              return <PlumbingHvacSuite businessData={businessData} onAddNotification={addNotification} addNotification={addNotification} firestoreDb={db} userId={user.uid} selectedTier={selectedTier} setActiveTab={setActiveTab} />;
+            case 'vertical_auto':
+              return <AutoRepairSuite businessData={businessData} onAddNotification={addNotification} addNotification={addNotification} firestoreDb={db} userId={user.uid} selectedTier={selectedTier} setActiveTab={setActiveTab} />;
+            case 'vertical_roofing':
+              return <RoofingSolarSuite businessData={businessData} onAddNotification={addNotification} addNotification={addNotification} firestoreDb={db} userId={user.uid} selectedTier={selectedTier} setActiveTab={setActiveTab} />;
+            case 'vertical_restaurant':
+              return <RestaurantBarSuite businessData={businessData} onAddNotification={addNotification} addNotification={addNotification} firestoreDb={db} userId={user.uid} selectedTier={selectedTier} setActiveTab={setActiveTab} />;
+            case 'vertical_retail':
+              return <RetailWellnessSuite businessData={businessData} onAddNotification={addNotification} addNotification={addNotification} firestoreDb={db} userId={user.uid} selectedTier={selectedTier} setActiveTab={setActiveTab} />;
             case 'pos':
               return (
                 <PosManager

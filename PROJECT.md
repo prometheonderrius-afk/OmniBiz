@@ -58,8 +58,8 @@ OmniBiz AI is a multi-tenant, industry-tailored SaaS operating system built with
 |---|------|-------|-------------|--------|
 | M1 | Core Backend, Vertex AI & Build Hardening | F1, F2, F3, F4, F5: GCP Project ID unification, Vertex AI fallback in `ai-generate.js`, live prompts, `.firebaserc`, eslint ignores | none | DONE |
 | M2 | Sovereign Offline Sync & Real Onboarding | F6, F7, F8: IndexedDB transaction queue, reconnect replay, real Onboarding step 5 and vertical Firestore seeding | M1 | DONE |
-| M3 | Swarm Backbone & Conductor Invariants | F9, F10, F11: 10-Agent Swarm, <0.05ms Conductor invariants, live Firestore blackboard and telemetry sync | M1 | PLANNED |
-| M4 | Dynamic Navigation & 5 Trade Vertical Suites | F12, F13, F14, F15, F16, F17, F18: Sidebar filter fix, CommandCenter cockpit, 5 complete trade vertical micro-suites | M1, M2 | PLANNED |
+| M3 | Swarm Backbone & Conductor Invariants | F9, F10, F11: 10-Agent Swarm, <0.05ms Conductor invariants, live Firestore blackboard and telemetry sync | M1 | DONE |
+| M4 | Dynamic Navigation & 5 Trade Vertical Suites | F12, F13, F14, F15, F16, F17, F18: Sidebar filter fix, CommandCenter cockpit, 5 complete trade vertical micro-suites | M1, M2 | IN_PROGRESS |
 | M5 | Production Document & Artifact Compilers | F19: Client-side PDF/Printable document generator for Contracts, Invoices, Receipts, Paystubs, SEO audits, Warranty forms | M1, M4 | PLANNED |
 | M6 | E2E Testing, Adversarial Hardening & Build Verification | F20: Pass 100% E2E test suite (Tiers 1-4), Tier 5 adversarial testing, clean `npm run build`, Firebase deployment readiness | M1, M2, M3, M4, M5 | PLANNED |
 

@@ -1,5 +1,80 @@
-export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSelectedTier, businessName, businessCategory, userEmail, onToggleRecorder, mobileOpen, onClose }) {
-  const menuItems = [
+import React from 'react';
+import { getVerticalKey } from '../utils/verticalHelpers';
+
+export default function Sidebar({
+  activeTab,
+  setActiveTab,
+  selectedTier,
+  setSelectedTier,
+  businessName,
+  businessCategory,
+  userEmail,
+  onToggleRecorder,
+  mobileOpen,
+  onClose
+}) {
+  const isAdminOwner = userEmail === 'prometheonderrius@gmail.com';
+  const cat = businessCategory || '';
+  const vKey = getVerticalKey(cat);
+
+  // Vertical Micro-Suite Configurations
+  const verticalSuiteMeta = {
+    plumbing_hvac: {
+      id: 'vertical_suite',
+      label: 'Plumbing & HVAC Suite',
+      badge: 'UPC/NEC Pro',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+        </svg>
+      )
+    },
+    auto_repair: {
+      id: 'vertical_suite',
+      label: 'Auto Repair & Towing',
+      badge: 'VIN / NHTSA',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="7" cy="15" r="2"/><circle cx="17" cy="15" r="2"/>
+        </svg>
+      )
+    },
+    roofing_construction: {
+      id: 'vertical_suite',
+      label: 'Roofing & Solar Suite',
+      badge: 'Pitch / GAF',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      )
+    },
+    restaurant_food: {
+      id: 'vertical_suite',
+      label: 'Restaurant & Bar Suite',
+      badge: 'HACCP / Floor',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+        </svg>
+      )
+    },
+    retail_wellness: {
+      id: 'vertical_suite',
+      label: 'Retail & Wellness Suite',
+      badge: 'VIP / Restock',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
+        </svg>
+      )
+    }
+  };
+
+  const activeVerticalItem = verticalSuiteMeta[vKey] || verticalSuiteMeta.plumbing_hvac;
+
+  // Base Menu Item Pool
+  const baseMenuItems = [
     { id: 'overview', label: 'Command Center', icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
     )},
@@ -65,26 +140,30 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
     )}
   ];
 
-  const isAdminOwner = userEmail === 'prometheonderrius@gmail.com';
-  const cat = businessCategory || '';
+  // Insert Active Vertical Suite right after Command Center (Index 1)
+  const fullMenuItems = [
+    baseMenuItems[0], // Command Center
+    activeVerticalItem, // Prominently Injected Vertical Suite
+    ...baseMenuItems.slice(1)
+  ];
 
   // Tailor navigation tabs strictly according to business category
-  const filteredMenuItems = menuItems.filter(item => {
+  const filteredMenuItems = fullMenuItems.filter(item => {
     if (isAdminOwner) return true; // Admin gets access to all tools
 
     if (item.id === 'dispatch') {
-      // Field Tech Dispatch is strictly for Trade Contractors
-      return cat.includes('Plumbing') || cat.includes('HVAC') || cat.includes('Handyman') || cat.includes('Auto') || cat.includes('Contracting');
+      // Field Tech Dispatch is strictly for Trade Contractors & Mobile fleets
+      return cat.includes('Plumbing') || cat.includes('HVAC') || cat.includes('Handyman') || cat.includes('Auto') || cat.includes('Towing') || cat.includes('Contracting') || cat.includes('Roofing') || cat.includes('Electrical');
     }
 
     if (item.id === 'competitors') {
       // Competitor Analysis for Tech, E-Commerce, Retail, or Professional Services
-      return cat.includes('Tech') || cat.includes('Retail') || cat.includes('Professional') || cat.includes('Fashion');
+      return cat.includes('Tech') || cat.includes('Retail') || cat.includes('Professional') || cat.includes('Fashion') || cat.includes('Boutique');
     }
 
     if (item.id === 'contracts') {
       // Contract Hub for Contractors, Professional Services, and Tech
-      return cat.includes('Plumbing') || cat.includes('HVAC') || cat.includes('Handyman') || cat.includes('Professional') || cat.includes('Tech');
+      return cat.includes('Plumbing') || cat.includes('HVAC') || cat.includes('Handyman') || cat.includes('Professional') || cat.includes('Tech') || cat.includes('Roofing') || cat.includes('Construction');
     }
 
     return true;
@@ -114,7 +193,8 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
       padding: '24px 16px',
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'space-between'
+      justifyContent: 'space-between',
+      overflowY: 'auto'
     }}>
       {/* Brand Header */}
       <div>
@@ -167,7 +247,7 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
           fontSize: '0.8rem', 
           color: 'var(--text-secondary)', 
           padding: '0 4px', 
-          marginBottom: '32px',
+          marginBottom: '24px',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis'
@@ -175,10 +255,11 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
           🏢 {businessName || 'Business Setup'}
         </div>
 
-        {/* Menu Navigation */}
+        {/* Menu Navigation — Uses filteredMenuItems */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {menuItems.map(item => {
+          {filteredMenuItems.map(item => {
             const isActive = activeTab === item.id;
+            const isVerticalTab = item.id === 'vertical_suite';
             return (
               <button
                 key={item.id}
@@ -187,49 +268,102 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '12px',
+                  justifyContent: 'space-between',
                   width: '100%',
-                  padding: '12px 14px',
-                  background: isActive ? 'rgba(255, 255, 255, 0.04)' : 'transparent',
+                  padding: isVerticalTab ? '10px 14px' : '10px 14px',
+                  background: isActive ? (isVerticalTab ? 'rgba(6, 182, 212, 0.15)' : 'rgba(255, 255, 255, 0.04)') : (isVerticalTab ? 'rgba(6, 182, 212, 0.04)' : 'transparent'),
                   border: 'none',
-                  borderLeft: isActive ? '3px solid var(--accent-purple)' : '3px solid transparent',
+                  borderLeft: isActive ? (isVerticalTab ? '3px solid var(--accent-cyan)' : '3px solid var(--accent-purple)') : (isVerticalTab ? '3px solid rgba(6, 182, 212, 0.3)' : '3px solid transparent'),
                   borderRadius: '0 6px 6px 0',
-                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  color: isActive ? 'var(--text-primary)' : (isVerticalTab ? 'var(--accent-cyan)' : 'var(--text-secondary)'),
                   cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: isActive ? '600' : '400',
+                  fontSize: '0.85rem',
+                  fontWeight: isActive || isVerticalTab ? '600' : '400',
                   textAlign: 'left',
                   transition: 'all 0.2s ease'
                 }}
                 className={isActive ? '' : 'sidebar-item-hover'}
               >
-                <span style={{ 
-                  color: isActive ? 'var(--accent-purple)' : 'var(--text-muted)',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}>
-                  {item.icon}
-                </span>
-                {item.label}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ 
+                    color: isActive ? (isVerticalTab ? 'var(--accent-cyan)' : 'var(--accent-purple)') : (isVerticalTab ? 'var(--accent-cyan)' : 'var(--text-muted)'),
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    {item.icon}
+                  </span>
+                  <span>{item.label}</span>
+                </div>
+                {item.badge && (
+                  <span className="badge badge-cyan" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           })}
         </nav>
       </div>
 
+      {/* Admin Vertical Suite Switcher Section (Master Admin testing shortcuts) */}
+      {isAdminOwner && (
+        <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            👑 Admin Vertical Previews:
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+            <button
+              onClick={() => handleTabClick('vertical_plumbing')}
+              className={`glass-button ${activeTab === 'vertical_plumbing' ? 'glass-button-cyan' : 'glass-button-secondary'}`}
+              style={{ padding: '4px 6px', fontSize: '0.65rem', textAlign: 'center' }}
+            >
+              🔧 Plumbing
+            </button>
+            <button
+              onClick={() => handleTabClick('vertical_auto')}
+              className={`glass-button ${activeTab === 'vertical_auto' ? 'glass-button-cyan' : 'glass-button-secondary'}`}
+              style={{ padding: '4px 6px', fontSize: '0.65rem', textAlign: 'center' }}
+            >
+              🚗 Auto/Tow
+            </button>
+            <button
+              onClick={() => handleTabClick('vertical_roofing')}
+              className={`glass-button ${activeTab === 'vertical_roofing' ? 'glass-button-cyan' : 'glass-button-secondary'}`}
+              style={{ padding: '4px 6px', fontSize: '0.65rem', textAlign: 'center' }}
+            >
+              🏠 Roofing
+            </button>
+            <button
+              onClick={() => handleTabClick('vertical_restaurant')}
+              className={`glass-button ${activeTab === 'vertical_restaurant' ? 'glass-button-cyan' : 'glass-button-secondary'}`}
+              style={{ padding: '4px 6px', fontSize: '0.65rem', textAlign: 'center' }}
+            >
+              🍽️ Restaurant
+            </button>
+            <button
+              onClick={() => handleTabClick('vertical_retail')}
+              className={`glass-button ${activeTab === 'vertical_retail' ? 'glass-button-cyan' : 'glass-button-secondary'}`}
+              style={{ padding: '4px 6px', fontSize: '0.65rem', textAlign: 'center', gridColumn: 'span 2' }}
+            >
+              🛍️ Retail / Boutique / Wellness
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Showcase Recorder Shortcut (Admin Only) */}
       {isAdminOwner && (
-        <div style={{ marginBottom: '20px', marginTop: '20px' }}>
+        <div style={{ marginBottom: '16px', marginTop: '16px' }}>
           <button 
             onClick={() => {
-              onToggleRecorder();
+              if (onToggleRecorder) onToggleRecorder();
               if (onClose) onClose();
             }}
             className="glass-button"
-            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, var(--accent-purple) 0%, #ec4899 100%)', border: 'none', padding: '10px 14px' }}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'linear-gradient(135deg, var(--accent-purple) 0%, #ec4899 100%)', border: 'none', padding: '8px 12px' }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-            <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Record Showcase</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Record Showcase</span>
           </button>
         </div>
       )}
@@ -237,17 +371,17 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
       {/* Subscription Status Footer */}
       <div style={{ 
         marginTop: 'auto', 
-        paddingTop: '20px', 
+        paddingTop: '16px', 
         borderTop: '1px solid var(--border-glass)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px'
+        gap: '8px'
       }}>
         <div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '2px' }}>
             {isAdminOwner ? 'ACCOUNT TYPE:' : 'CURRENT PLAN:'}
           </div>
-          <span className={`badge ${isAdminOwner ? 'badge-purple' : getTierBadgeClass(selectedTier)}`} style={{ textTransform: 'uppercase', fontSize: '0.7rem', width: '100%', justifyContent: 'center' }}>
+          <span className={`badge ${isAdminOwner ? 'badge-purple' : getTierBadgeClass(selectedTier)}`} style={{ textTransform: 'uppercase', fontSize: '0.65rem', width: '100%', justifyContent: 'center' }}>
             {isAdminOwner ? '👑 Platform Master Admin' : `${selectedTier} plan`}
           </span>
         </div>
@@ -255,4 +389,3 @@ export default function Sidebar({ activeTab, setActiveTab, selectedTier, setSele
     </aside>
   );
 }
-
