@@ -1,4 +1,4 @@
-import { dbAdmin } from './_utils/gcp.js';
+import { dbAdmin, generateAIContent } from './_utils/gcp.js';
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
 
   console.log(`Received incoming SMS from ${From}: ${Body}`);
 
-  const projectId = "wacom-canvas";
+  const projectId = process.env.GCP_PROJECT_ID || "zany-passkey-d9st9";
   const userDocUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`;
   const smsLogUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/smsLog`;
 
@@ -95,48 +95,28 @@ export default async function handler(req, res) {
       body: JSON.stringify(clientLogBody)
     });
 
-    // 4. Run Gemini to generate conversational response
-    const apiKey = process.env.GEMINI_API_KEY;
-    let replyText = `Thanks for your message! One of our team members at ${businessData.name} will check this out and get back to you shortly.`;
+    // 4. Run Vertex AI / Gemini to generate conversational response
+    let replyText = `Thanks for your message! One of our team members at ${businessData.name || 'our company'} will check this out and get back to you shortly.`;
 
-    if (apiKey) {
-      try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-        const staffString = businessData.employees?.map(e => `${e.name} (${e.role})`).join(', ') || 'none';
-        
-        const response = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: `You are the AI virtual receptionist for "${businessData.name}" (Category: "${businessData.category}").
-Owner name: "${businessData.ownerName}".
-Active Staff: ${staffString}.
-Our target audience: "${businessData.targetAudience}".
-
-Here is the conversation history with this customer so far:
+    try {
+      const staffString = businessData.employees?.map(e => `${e.name} (${e.role})`).join(', ') || 'none';
+      const prompt = `Here is the conversation history with this customer so far:
 ${historyText}
 Client: ${Body}
 
-Draft a professional, friendly, and helpful text response to the customer. Keep it under 50 words. Speak on behalf of the business. Do not use placeholders or markdown formatting.`
-              }]
-            }],
-            generationConfig: {
-              maxOutputTokens: 120,
-              temperature: 0.7
-            }
-          })
-        });
+Draft a professional, friendly, and helpful text response to the customer. Keep it under 50 words. Speak on behalf of the business. Do not use placeholders or markdown formatting.`;
+      
+      const systemInstruction = `You are the AI virtual receptionist for "${businessData.name || 'our company'}" (Category: "${businessData.category || 'Local Business'}").
+Owner name: "${businessData.ownerName || 'Owner'}".
+Active Staff: ${staffString}.
+Our target audience: "${businessData.targetAudience || 'our clients'}".`;
 
-        const geminiData = await response.json();
-        const output = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        if (output) {
-          replyText = output.trim();
-        }
-      } catch (geminiErr) {
-        console.error('Gemini prompt generation failed for SMS reply:', geminiErr);
+      const output = await generateAIContent(prompt, systemInstruction, { maxTokens: 120, temperature: 0.7 });
+      if (output) {
+        replyText = output.trim();
       }
+    } catch (aiErr) {
+      console.warn('AI prompt generation failed for SMS reply, using standard greeting:', aiErr.message);
     }
 
     // 5. Log the AI response to Firestore smsLog

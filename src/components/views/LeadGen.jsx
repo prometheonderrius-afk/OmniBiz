@@ -181,15 +181,7 @@ Owner, ${businessData.name || 'OmniBiz Client'}`);
     }
 
     setScraping(true);
-    setScrapeStep('Querying Google Search index for local listings...');
-
-    const stepTimer1 = setTimeout(() => {
-      setScrapeStep('Matching public phone listings and websites...');
-    }, 1500);
-
-    const stepTimer2 = setTimeout(() => {
-      setScrapeStep('Evaluating SEO gaps and technical scores...');
-    }, 3200);
+    setScrapeStep('Running Vertex AI local prospect discovery...');
 
     try {
       const response = await fetch('/api/discover-leads', {
@@ -199,25 +191,24 @@ Owner, ${businessData.name || 'OmniBiz Client'}`);
         },
         body: JSON.stringify({
           category: businessData.category,
-          location: businessData.location
+          location: businessData.location,
+          businessData
         })
       });
-
-      clearTimeout(stepTimer1);
-      clearTimeout(stepTimer2);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `Lead discovery failed with status ${response.status}`);
       }
 
-      const newLeads = await response.json();
+      const rawData = await response.json();
+      const leadList = Array.isArray(rawData) ? rawData : (rawData.leads || []);
       
-      if (newLeads && newLeads.length > 0) {
-        const formattedLeads = newLeads.map((lead, index) => ({
+      if (leadList.length > 0) {
+        const formattedLeads = leadList.map((lead, index) => ({
           ...lead,
-          id: Date.now() + index,
-          status: 'New'
+          id: lead.id || (Date.now() + index),
+          status: lead.status || 'New'
         }));
         
         setLeads(prev => [...formattedLeads, ...prev]);
@@ -228,10 +219,8 @@ Owner, ${businessData.name || 'OmniBiz Client'}`);
       }
 
     } catch (error) {
-      clearTimeout(stepTimer1);
-      clearTimeout(stepTimer2);
       console.error("Lead Discovery Error:", error);
-      alert(`Lead Discovery failed: ${error.message}. Please check your Gemini configuration.`);
+      alert(`Lead Discovery failed: ${error.message}. Please check your Vertex AI / Gemini configuration.`);
     } finally {
       setScraping(false);
     }

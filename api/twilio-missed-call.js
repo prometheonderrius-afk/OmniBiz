@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ status: 'ignored', reason: 'call was not missed' });
   }
 
-  const projectId = "wacom-canvas";
+  const projectId = process.env.GCP_PROJECT_ID || "zany-passkey-d9st9";
   const adminSettingsUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/system/adminSettings`;
   const userDocUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`;
   const smsLogUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/smsLog`;

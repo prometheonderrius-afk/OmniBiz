@@ -16,13 +16,14 @@ export default async function handler(req, res) {
   if (typeof bodyData === 'string') {
     try { bodyData = JSON.parse(bodyData); } catch (e) {}
   }
-  const { uid, to, body } = bodyData;
+  const uid = bodyData.uid || req.query?.uid || 'default';
+  const { to, body } = bodyData;
 
-  if (!uid || !to || !body) {
-    return res.status(400).json({ error: 'Missing parameters: uid, to, and body are required.' });
+  if (!to || !body) {
+    return res.status(400).json({ error: 'Missing parameters: to and body are required.' });
   }
 
-  const projectId = "wacom-canvas";
+  const projectId = process.env.GCP_PROJECT_ID || "zany-passkey-d9st9";
   const adminSettingsUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/system/adminSettings`;
   const apiLogsUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/apiLogs`;
 

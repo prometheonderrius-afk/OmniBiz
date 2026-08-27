@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const projectId = "wacom-canvas";
+  const projectId = process.env.GCP_PROJECT_ID || "zany-passkey-d9st9";
   const firestoreRestUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/system/adminSettings`;
 
   // GET: Fetch Admin Settings

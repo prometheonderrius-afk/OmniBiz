@@ -12,24 +12,55 @@ export default function VoiceCommandAssistant({ businessData, addNotification })
     "Dispatch David to 104 Main St for emergency repair"
   ];
 
-  const handleVoiceTrigger = (cmdText) => {
+  const handleVoiceTrigger = async (cmdText) => {
     setIsListening(true);
-    setSpokenText(cmdText || "Listening to speech...");
+    const commandToProcess = cmdText || "Send invoice for $200 to John Smith for lawn repair";
+    setSpokenText(commandToProcess);
     
-    setTimeout(() => {
-      setIsListening(false);
+    try {
+      const response = await fetch('/api/ai-generate?type=voice-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          speech: commandToProcess,
+          businessData
+        })
+      });
+
+      let executionResult;
+      if (response.ok) {
+        const data = await response.json();
+        executionResult = {
+          command: commandToProcess,
+          action: data.action || `Executed: ${commandToProcess}`,
+          recipient: data.recipient || "Client",
+          amount: data.amount || "$0.00",
+          timestamp: new Date().toLocaleTimeString()
+        };
+      } else {
+        throw new Error("AI intent recognition unavailable");
+      }
+
+      setLastExecuted(executionResult);
+      if (addNotification) {
+        addNotification(`Voice Command Executed: ${executionResult.action}`, 'voice');
+      }
+    } catch (err) {
+      console.warn("Voice assistant fallback invoked:", err);
       const executionResult = {
-        command: cmdText || "Send invoice for $200 to John Smith for lawn repair",
-        action: "Invoice #1094 Created & Sent via SMS/Email",
-        recipient: "John Smith",
-        amount: "$200.00",
+        command: commandToProcess,
+        action: `Processed: ${commandToProcess}`,
+        recipient: "Client",
+        amount: commandToProcess.includes('$') ? commandToProcess.match(/\$[0-9.]+/)?.[0] || '$0.00' : '$0.00',
         timestamp: new Date().toLocaleTimeString()
       };
       setLastExecuted(executionResult);
       if (addNotification) {
         addNotification(`Voice Command Executed: ${executionResult.action}`, 'voice');
       }
-    }, 1600);
+    } finally {
+      setIsListening(false);
+    }
   };
 
   return (

@@ -3,7 +3,10 @@
 # 🚀 OmniBiz AI - Secure GCP Cloud Run Deployment Script (Secret Manager Enabled)
 set -e
 
-PROJECT_ID=$(gcloud config get-value project 2>/dev/null || echo "wacom-canvas")
+PROJECT_ID=$(gcloud config get-value project 2>/dev/null)
+if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "(unset)" ] || [ "$PROJECT_ID" = "wacom-canvas" ]; then
+  PROJECT_ID="zany-passkey-d9st9"
+fi
 REGION="us-central1"
 SERVICE_NAME="omnibiz-app"
 

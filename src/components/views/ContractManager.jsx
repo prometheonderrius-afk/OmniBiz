@@ -160,7 +160,7 @@ Neither party shall disclose, copy, or distribute confidential records or client
     fetch('/api/send-sms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: tradeClientPhone, body: quoteSummary })
+      body: JSON.stringify({ uid: businessData?.uid || 'default', to: tradeClientPhone, body: quoteSummary })
     })
       .then(() => {
         addNotification(`SMS Quote Dispatched: Sent $${grandTotalEstimate.toFixed(2)} estimate to ${tradeClientName} (${tradeClientPhone}).`, "system");

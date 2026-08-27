@@ -19,11 +19,16 @@ export default function CompetitorAnalysis({
       const response = await fetch('/api/competitor-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ businessData })
+        body: JSON.stringify({
+          businessData,
+          category: businessData.category,
+          location: businessData.location
+        })
       });
       if (!response.ok) throw new Error('Analysis failed');
       const data = await response.json();
-      setCompetitors(data);
+      const compList = Array.isArray(data) ? data : (data.competitors || []);
+      setCompetitors(compList);
     } catch (err) {
       console.error(err);
       // Fallback

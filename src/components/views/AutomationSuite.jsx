@@ -111,7 +111,7 @@ export default function AutomationSuite({
     fetch('/api/send-sms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: reviewCustomerPhone, body: smsBody })
+      body: JSON.stringify({ uid: userId || 'default', to: reviewCustomerPhone, body: smsBody })
     })
       .then(() => {
         addNotification(`Review Request Sent: Dispatched review link to ${reviewCustomerPhone}.`, "review");
