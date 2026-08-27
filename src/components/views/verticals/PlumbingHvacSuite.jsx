@@ -107,14 +107,14 @@ export default function PlumbingHvacSuite({
 
   const handleDownloadCompliancePdf = () => {
     const doc = generateComplianceCertificatePdfBlob({
-      jobAddress: '1044 Barton Springs Rd, Austin, TX',
-      masterTechLicense: 'M-39821-TX',
-      pipePressurePsi: pressureNum,
+      jobAddress: jobAddress || '1044 Barton Springs Rd, Austin, TX',
+      masterTechLicense: masterTechLicense || 'M-39821-TX',
+      pipePressurePsi,
       isOverpressure,
       complianceScore,
       passedCount,
-      totalCount: complianceChecklist.length,
-      checks: complianceChecklist,
+      totalCount,
+      checks: complianceChecks,
       businessData
     });
     doc.download();
@@ -123,14 +123,14 @@ export default function PlumbingHvacSuite({
 
   const handlePrintCompliance = () => {
     const doc = generateComplianceCertificatePdfBlob({
-      jobAddress: '1044 Barton Springs Rd, Austin, TX',
-      masterTechLicense: 'M-39821-TX',
-      pipePressurePsi: pressureNum,
+      jobAddress: jobAddress || '1044 Barton Springs Rd, Austin, TX',
+      masterTechLicense: masterTechLicense || 'M-39821-TX',
+      pipePressurePsi,
       isOverpressure,
       complianceScore,
       passedCount,
-      totalCount: complianceChecklist.length,
-      checks: complianceChecklist,
+      totalCount,
+      checks: complianceChecks,
       businessData
     });
     doc.print();

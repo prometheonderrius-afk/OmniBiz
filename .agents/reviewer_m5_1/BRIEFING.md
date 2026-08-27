@@ -1,4 +1,4 @@
-# BRIEFING — 2026-08-27T11:06:40Z
+# BRIEFING — 2026-08-27T11:09:10Z
 
 ## Mission
 Review Milestone M5 (Document Compilation Engine & Zero-Placeholder View Hardening) for correctness, interface conformance, adversarial resilience, and production readiness.
@@ -19,10 +19,10 @@ Review Milestone M5 (Document Compilation Engine & Zero-Placeholder View Hardeni
 
 ## Current Parent
 - Conversation ID: f0e8b56a-45e2-4fd7-9854-ac07d8408013
-- Updated: 2026-08-27T11:06:40Z
+- Updated: 2026-08-27T11:09:10Z
 
 ## Review Scope
-- **Files to review**:
+- **Files reviewed**:
   - `src/utils/documentGenerator.js`
   - `src/components/views/ContractManager.jsx`
   - `src/components/views/PosManager.jsx`
@@ -32,28 +32,36 @@ Review Milestone M5 (Document Compilation Engine & Zero-Placeholder View Hardeni
   - `src/components/views/CompetitorAnalysis.jsx`
   - `src/components/views/AdManager.jsx`
   - `src/components/views/AutomationSuite.jsx`
-  - `src/components/views/PlumbingHvacSuite.jsx`
-  - `src/components/views/AutoRepairSuite.jsx`
-  - `src/components/views/RoofingSolarSuite.jsx`
-  - `src/components/views/RestaurantBarSuite.jsx`
+  - `src/components/views/verticals/PlumbingHvacSuite.jsx`
+  - `src/components/views/verticals/AutoRepairSuite.jsx`
+  - `src/components/views/verticals/RoofingSolarSuite.jsx`
+  - `src/components/views/verticals/RestaurantBarSuite.jsx`
+  - `api/ai-generate.js`
   - `tests/m5-document-compilers.test.mjs`
-- **Interface contracts**: PROJECT.md, ORIGINAL_REQUEST.md
-- **Review criteria**: Correctness, interface conformance, live AI routing, document generator API completeness, PDF blob generation and print/download methods, test integrity.
+  - `tests/m5-adversarial-stress.test.mjs`
+  - `tests/m5-challenger-stress-tests.test.mjs`
+  - `tests/m5-concurrency-stress.test.mjs`
 
 ## Review Checklist
-- **Items reviewed**: [TBD]
-- **Verdict**: PENDING
-- **Unverified claims**: Worker M5 claims regarding 16 generators, zero mock alerts, live Vertex AI endpoints.
+- **Items reviewed**: All 16 document generators, universal return contract, live Vertex AI routes, zero-mock hardening, trade vertical actions.
+- **Verdict**: REQUEST_CHANGES
+- **Integrity Assessment**: PASSED (No hardcoded facades, bypasses, or cheating detected). Real implementations verified.
 
 ## Attack Surface
-- **Hypotheses tested**: [TBD]
-- **Vulnerabilities found**: [TBD]
-- **Untested angles**: [TBD]
+- **Hypotheses tested**:
+  1. Runtime variable binding in vertical suites: Found ReferenceError in `PlumbingHvacSuite.jsx` on `pressureNum` and `complianceChecklist`.
+  2. Null-poisoned argument survival: Found TypeError in `generateContractPdfBlob` when `partyA: null`.
+  3. Floating point and edge-case currency formatting: Found `-0` produces `-$0.00`.
+  4. Filename sanitization against directory traversal / hyphen sequences.
+- **Vulnerabilities found**:
+  - Critical: `PlumbingHvacSuite.jsx:112, 116, 128, 132` reference undefined variables `pressureNum` and `complianceChecklist`.
+  - Major: `documentGenerator.js:412` `typeof null === 'object'` causing TypeError when `partyA: null`.
 
 ## Key Decisions Made
-- Initializing review environment and executing independent test suite first.
+- Issue `REQUEST_CHANGES` verdict to ensure runtime stability and null-safety before milestone completion.
 
 ## Artifact Index
 - `.agents/reviewer_m5_1/DISPATCH.md` — Initial dispatch message
-- `.agents/reviewer_m5_1/BRIEFING.md` — Agent working memory
+- `.agents/reviewer_m5_1/BRIEFING.md` — Persistent working memory
 - `.agents/reviewer_m5_1/progress.md` — Liveness heartbeat
+- `.agents/reviewer_m5_1/handoff.md` — Comprehensive review and challenge report

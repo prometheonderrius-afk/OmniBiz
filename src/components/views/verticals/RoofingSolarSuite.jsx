@@ -255,7 +255,7 @@ export default function RoofingSolarSuite({
       registrationId: `WR-${manufacturer}-${Date.now().toString().slice(-6)}`,
       components: warrantyParts.map(p => ({
         name: p.name,
-        product: p.brandModel
+        product: p.product || p.brandModel || ''
       })),
       businessData
     });
@@ -275,7 +275,7 @@ export default function RoofingSolarSuite({
       registrationId: `WR-${manufacturer}-${Date.now().toString().slice(-6)}`,
       components: warrantyParts.map(p => ({
         name: p.name,
-        product: p.brandModel
+        product: p.product || p.brandModel || ''
       })),
       businessData
     });

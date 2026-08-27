@@ -228,41 +228,50 @@ export const BASE_PRINT_STYLES = `
  * Clean and format numbers as standard USD currency
  */
 export function formatCurrency(num) {
-  const val = typeof num === 'number' ? num : parseFloat(num) || 0;
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+  let val = typeof num === 'number' ? num : parseFloat(num);
+  if (isNaN(val) || !isFinite(val) || Object.is(val, -0) || Math.abs(val) === 0 || Math.abs(val) < 0.005) {
+    val = 0;
+  }
+  const cleanVal = Math.abs(val) === 0 ? 0 : val;
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cleanVal);
 }
 
 /**
  * Sanitize string for safe filenames
  */
 export function sanitizeFilename(str) {
-  return String(str || 'Document')
+  if (str === null || str === undefined || str === '') return 'Document';
+  const clean = String(str)
     .trim()
     .replace(/[^a-zA-Z0-9_-]/g, '_')
     .replace(/_+/g, '_');
+  return clean || 'Document';
 }
 
 /**
  * Universal Artifact Constructor & Downloader
  */
 export function createDocumentBlob(htmlContent, defaultFilename = 'OmniBiz_Document.html') {
+  const safeHtml = String(htmlContent || '<!DOCTYPE html><html><body>Document</body></html>');
+  const safeFilename = sanitizeFilename(defaultFilename);
+
   const blob = typeof Blob !== 'undefined'
-    ? new Blob([htmlContent], { type: 'text/html;charset=utf-8' })
-    : { size: Buffer.byteLength(htmlContent, 'utf-8'), type: 'text/html;charset=utf-8' };
+    ? new Blob([safeHtml], { type: 'text/html;charset=utf-8' })
+    : { size: Buffer.byteLength(safeHtml, 'utf-8'), type: 'text/html;charset=utf-8' };
 
   let url = '';
   if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
     try {
       url = URL.createObjectURL(blob);
     } catch {
-      url = `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`;
+      url = `data:text/html;charset=utf-8,${encodeURIComponent(safeHtml)}`;
     }
   } else {
-    url = `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`;
+    url = `data:text/html;charset=utf-8,${encodeURIComponent(safeHtml)}`;
   }
 
   const download = (customFilename) => {
-    const filenameToUse = customFilename || defaultFilename;
+    const filenameToUse = customFilename || safeFilename;
     if (typeof document !== 'undefined' && document.createElement) {
       const a = document.createElement('a');
       a.href = url;
@@ -279,7 +288,7 @@ export function createDocumentBlob(htmlContent, defaultFilename = 'OmniBiz_Docum
     if (typeof window !== 'undefined' && typeof window.open === 'function') {
       const printWin = window.open('', '_blank');
       if (printWin) {
-        printWin.document.write(htmlContent);
+        printWin.document.write(safeHtml);
         printWin.document.close();
         printWin.focus();
         setTimeout(() => {
@@ -297,7 +306,7 @@ export function createDocumentBlob(htmlContent, defaultFilename = 'OmniBiz_Docum
     if (typeof window !== 'undefined' && typeof window.open === 'function') {
       const previewWin = window.open('', '_blank');
       if (previewWin) {
-        previewWin.document.write(htmlContent);
+        previewWin.document.write(safeHtml);
         previewWin.document.close();
       }
     }
@@ -306,11 +315,11 @@ export function createDocumentBlob(htmlContent, defaultFilename = 'OmniBiz_Docum
   return {
     blob,
     url,
-    filename: defaultFilename,
+    filename: safeFilename,
     download,
     print,
     openPreview,
-    html: htmlContent
+    html: safeHtml
   };
 }
 
@@ -319,12 +328,14 @@ export function createDocumentBlob(htmlContent, defaultFilename = 'OmniBiz_Docum
 // ============================================================================
 
 export function renderVerifiedStampSvg(text = 'VERIFIED E-SIGNATURE', color = '#059669') {
+  const safeText = text || 'VERIFIED E-SIGNATURE';
+  const safeColor = color || '#059669';
   return `
     <svg width="180" height="60" viewBox="0 0 180 60" xmlns="http://www.w3.org/2000/svg">
-      <rect x="2" y="2" width="176" height="56" rx="4" fill="none" stroke="${color}" stroke-width="2.5" stroke-dasharray="4 2" />
-      <rect x="5" y="5" width="170" height="50" rx="2" fill="${color}" fill-opacity="0.06" />
-      <text x="90" y="26" font-family="-apple-system, sans-serif" font-size="10" font-weight="900" fill="${color}" text-anchor="middle" letter-spacing="1.5">OMNIBIZ AUDITED</text>
-      <text x="90" y="44" font-family="-apple-system, sans-serif" font-size="12" font-weight="800" fill="${color}" text-anchor="middle" letter-spacing="0.5">${text}</text>
+      <rect x="2" y="2" width="176" height="56" rx="4" fill="none" stroke="${safeColor}" stroke-width="2.5" stroke-dasharray="4 2" />
+      <rect x="5" y="5" width="170" height="50" rx="2" fill="${safeColor}" fill-opacity="0.06" />
+      <text x="90" y="26" font-family="-apple-system, sans-serif" font-size="10" font-weight="900" fill="${safeColor}" text-anchor="middle" letter-spacing="1.5">OMNIBIZ AUDITED</text>
+      <text x="90" y="44" font-family="-apple-system, sans-serif" font-size="12" font-weight="800" fill="${safeColor}" text-anchor="middle" letter-spacing="0.5">${safeText}</text>
     </svg>
   `;
 }
@@ -351,6 +362,7 @@ export function renderGoldWarrantySealSvg() {
 }
 
 export function renderBarcodeSvg(code = '9021849201') {
+  const safeCode = code || '9021849201';
   return `
     <svg width="220" height="48" viewBox="0 0 220 48" xmlns="http://www.w3.org/2000/svg">
       <rect width="220" height="48" fill="#ffffff"/>
@@ -390,7 +402,7 @@ export function renderBarcodeSvg(code = '9021849201') {
         <rect x="196" y="4" width="3" height="30"/>
         <rect x="202" y="4" width="2" height="30"/>
       </g>
-      <text x="110" y="44" font-family="monospace" font-size="9" fill="#4b5563" text-anchor="middle" letter-spacing="2">*${code}*</text>
+      <text x="110" y="44" font-family="monospace" font-size="9" fill="#4b5563" text-anchor="middle" letter-spacing="2">*${safeCode}*</text>
     </svg>
   `;
 }
@@ -399,18 +411,24 @@ export function renderBarcodeSvg(code = '9021849201') {
 // 1. CONTRACT GENERATOR (PROJECT.md Interface Contract)
 // ============================================================================
 
-export function generateContractPdfBlob({
-  contractTitle = 'Commercial Services Agreement',
-  clientName = 'Valued Client',
-  partyA = 'OmniBiz Operations Inc.',
-  partyB = clientName,
-  clauses = [],
-  signatureBlock = {},
-  date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-  businessData = {}
-} = {}) {
-  const partyAName = typeof partyA === 'object' ? partyA.name || businessData.name || 'OmniBiz Operations Inc.' : String(partyA || businessData.name || 'OmniBiz Operations Inc.');
-  const partyBName = typeof partyB === 'object' ? partyB.name || clientName : String(partyB || clientName);
+export function generateContractPdfBlob(params = {}) {
+  const {
+    contractTitle = 'Commercial Services Agreement',
+    clientName = 'Valued Client',
+    partyA = 'OmniBiz Operations Inc.',
+    partyB = clientName,
+    clauses = [],
+    signatureBlock = {},
+    date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    businessData = {}
+  } = params || {};
+
+  const safeBiz = businessData && typeof businessData === 'object' ? businessData : {};
+  const safeContractTitle = contractTitle || 'Commercial Services Agreement';
+  const safeClientName = clientName || 'Valued Client';
+  const partyAName = (partyA && typeof partyA === 'object') ? (partyA.name || safeBiz.name || 'OmniBiz Operations Inc.') : String(partyA || safeBiz.name || 'OmniBiz Operations Inc.');
+  const partyBName = (partyB && typeof partyB === 'object') ? (partyB.name || safeClientName) : String(partyB || safeClientName);
+  const safeDate = date || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   let clausesToRender = [];
   if (typeof clauses === 'string') {
@@ -444,15 +462,16 @@ export function generateContractPdfBlob({
     ];
   }
 
-  const isSigned = signatureBlock?.isSigned || Boolean(signatureBlock?.signatureName || signatureBlock?.signerName);
-  const signerName = signatureBlock?.signatureName || signatureBlock?.signerName || partyBName;
-  const auditHash = signatureBlock?.auditHash || `SHA256-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+  const safeSig = signatureBlock && typeof signatureBlock === 'object' ? signatureBlock : {};
+  const isSigned = Boolean(safeSig.isSigned || safeSig.signatureName || safeSig.signerName);
+  const signerName = safeSig.signatureName || safeSig.signerName || partyBName;
+  const auditHash = safeSig.auditHash || `SHA256-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>${contractTitle} — ${partyBName}</title>
+  <title>${safeContractTitle} — ${partyBName}</title>
   <style>
     ${BASE_PRINT_STYLES}
     .contract-clause {
@@ -504,8 +523,8 @@ export function generateContractPdfBlob({
       </div>
       <div class="doc-title-box">
         <span class="doc-type-badge">LEGAL INSTRUMENT</span>
-        <div class="doc-id-number">${contractTitle}</div>
-        <div class="doc-date-text">Effective Date: ${date}</div>
+        <div class="doc-id-number">${safeContractTitle}</div>
+        <div class="doc-date-text">Effective Date: ${safeDate}</div>
       </div>
     </div>
 
@@ -525,8 +544,8 @@ export function generateContractPdfBlob({
     <div style="margin-bottom: 24px;">
       ${clausesToRender.map((c, i) => `
         <div class="contract-clause avoid-break">
-          <div class="clause-heading">${typeof c === 'string' ? `Section ${i + 1}` : (c.title || `Section ${i + 1}`)}</div>
-          <div class="clause-body">${typeof c === 'string' ? c : (c.body || c.text || '')}</div>
+          <div class="clause-heading">${typeof c === 'string' ? `Section ${i + 1}` : (c?.title || `Section ${i + 1}`)}</div>
+          <div class="clause-body">${typeof c === 'string' ? c : (c?.body || c?.text || '')}</div>
         </div>
       `).join('')}
     </div>
@@ -536,7 +555,7 @@ export function generateContractPdfBlob({
         <div class="meta-title">Authorized Representative (Party A)</div>
         <div class="sig-name-cursive">${partyAName} Executive</div>
         <div style="border-bottom: 1px solid #9ca3af; margin-bottom: 6px;"></div>
-        <div class="meta-value-sub">Date: ${date}</div>
+        <div class="meta-value-sub">Date: ${safeDate}</div>
         <div style="margin-top: 10px;">${renderVerifiedStampSvg('PROVIDER VERIFIED', '#4f46e5')}</div>
       </div>
 
@@ -545,7 +564,7 @@ export function generateContractPdfBlob({
         ${isSigned ? `
           <div class="sig-name-cursive">${signerName}</div>
           <div style="border-bottom: 1px solid #9ca3af; margin-bottom: 6px;"></div>
-          <div class="meta-value-sub">Signed Date: ${date}</div>
+          <div class="meta-value-sub">Signed Date: ${safeDate}</div>
           <div class="meta-value-sub" style="font-size: 10px; font-family: monospace; color: #059669; margin-top: 4px;">Hash: ${auditHash}</div>
           <div style="margin-top: 10px;">${renderVerifiedStampSvg('DIGITALLY SIGNED', '#059669')}</div>
         ` : `
@@ -564,7 +583,7 @@ export function generateContractPdfBlob({
 </body>
 </html>`;
 
-  const filename = `Contract_${sanitizeFilename(contractTitle)}_${sanitizeFilename(partyBName)}_${Date.now()}.html`;
+  const filename = `Contract_${sanitizeFilename(safeContractTitle)}_${sanitizeFilename(partyBName)}_${Date.now()}.html`;
   return createDocumentBlob(html, filename);
 }
 
@@ -572,21 +591,29 @@ export function generateContractPdfBlob({
 // 2. INVOICE GENERATOR (PROJECT.md Interface Contract)
 // ============================================================================
 
-export function generateInvoicePdfBlob({
-  invoiceNumber = `INV-${Math.floor(100000 + Math.random() * 900000)}`,
-  clientName = 'Valued Client',
-  lineItems = [],
-  subtotal = 0,
-  tax = 0,
-  grandTotal = 0,
-  paymentTerms = 'Due Upon Receipt',
-  businessData = {},
-  dueDate = new Date(Date.now() + 14 * 86400000).toLocaleDateString(),
-  issueDate = new Date().toLocaleDateString()
-} = {}) {
-  const companyName = businessData?.name || 'OmniBiz Trades Inc.';
-  const companyPhone = businessData?.ownerPhone || '(555) 019-2834';
-  const companyEmail = businessData?.ownerEmail || 'billing@omnibiz-ai.me';
+export function generateInvoicePdfBlob(params = {}) {
+  const {
+    invoiceNumber = `INV-${Math.floor(100000 + Math.random() * 900000)}`,
+    clientName = 'Valued Client',
+    lineItems = [],
+    subtotal = 0,
+    tax = 0,
+    grandTotal = 0,
+    paymentTerms = 'Due Upon Receipt',
+    businessData = {},
+    dueDate = new Date(Date.now() + 14 * 86400000).toLocaleDateString(),
+    issueDate = new Date().toLocaleDateString()
+  } = params || {};
+
+  const safeBiz = businessData && typeof businessData === 'object' ? businessData : {};
+  const safeInvoiceNumber = invoiceNumber || `INV-${Math.floor(100000 + Math.random() * 900000)}`;
+  const safeClientName = clientName || 'Valued Client';
+  const companyName = safeBiz.name || 'OmniBiz Trades Inc.';
+  const companyPhone = safeBiz.ownerPhone || '(555) 019-2834';
+  const companyEmail = safeBiz.ownerEmail || 'billing@omnibiz-ai.me';
+  const safePaymentTerms = paymentTerms || 'Due Upon Receipt';
+  const safeDueDate = dueDate || new Date(Date.now() + 14 * 86400000).toLocaleDateString();
+  const safeIssueDate = issueDate || new Date().toLocaleDateString();
 
   const defaultItems = [
     { description: 'Standard Diagnostic & Field Labor Call', qty: 1, unitPrice: 95.00, total: 95.00 },
@@ -595,15 +622,17 @@ export function generateInvoicePdfBlob({
 
   const itemsToRender = (Array.isArray(lineItems) && lineItems.length > 0) ? lineItems : defaultItems;
 
-  const computedSubtotal = subtotal || itemsToRender.reduce((sum, item) => sum + (Number(item.qty || item.quantity || 1) * Number(item.unitPrice || item.price || item.rate || 0)), 0);
-  const computedTax = tax !== undefined && tax !== null ? tax : computedSubtotal * 0.0825;
-  const computedTotal = grandTotal || (computedSubtotal + computedTax);
+  const computedSubtotal = (subtotal !== undefined && subtotal !== null)
+    ? Number(subtotal)
+    : itemsToRender.reduce((sum, item) => sum + (Number(item?.qty || item?.quantity || 1) * Number(item?.unitPrice || item?.price || item?.rate || 0)), 0);
+  const computedTax = (tax !== undefined && tax !== null) ? Number(tax) : (computedSubtotal * 0.0825);
+  const computedTotal = (grandTotal !== undefined && grandTotal !== null) ? Number(grandTotal) : (computedSubtotal + computedTax);
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Invoice ${invoiceNumber} — ${clientName}</title>
+  <title>Invoice ${safeInvoiceNumber} — ${safeClientName}</title>
   <style>
     ${BASE_PRINT_STYLES}
   </style>
@@ -620,20 +649,20 @@ export function generateInvoicePdfBlob({
       </div>
       <div class="doc-title-box">
         <span class="doc-type-badge">INVOICE</span>
-        <div class="doc-id-number">${invoiceNumber}</div>
-        <div class="doc-date-text">Issued: ${issueDate}</div>
+        <div class="doc-id-number">${safeInvoiceNumber}</div>
+        <div class="doc-date-text">Issued: ${safeIssueDate}</div>
       </div>
     </div>
 
     <div class="meta-grid">
       <div>
         <div class="meta-title">Billed To</div>
-        <div class="meta-value-bold">${clientName}</div>
-        <div class="meta-value-sub">Terms: ${paymentTerms}</div>
+        <div class="meta-value-bold">${safeClientName}</div>
+        <div class="meta-value-sub">Terms: ${safePaymentTerms}</div>
       </div>
       <div>
         <div class="meta-title">Payment Information</div>
-        <div class="meta-value-bold">Due Date: ${dueDate}</div>
+        <div class="meta-value-bold">Due Date: ${safeDueDate}</div>
         <div class="meta-value-sub" style="color: #059669; font-weight: 600;">Status: Official Invoice</div>
       </div>
     </div>
@@ -650,13 +679,13 @@ export function generateInvoicePdfBlob({
       </thead>
       <tbody>
         ${itemsToRender.map((item, idx) => {
-          const qty = Number(item.qty || item.quantity || item.hours || 1);
-          const rate = Number(item.unitPrice || item.price || item.rate || 0);
-          const lineTotal = Number(item.total || (qty * rate));
+          const qty = Number(item?.qty || item?.quantity || item?.hours || 1);
+          const rate = Number(item?.unitPrice || item?.price || item?.rate || 0);
+          const lineTotal = Number(item?.total !== undefined && item?.total !== null ? item.total : (qty * rate));
           return `
             <tr>
               <td>${idx + 1}</td>
-              <td><strong>${item.name || item.description || 'Service Item'}</strong></td>
+              <td><strong>${item?.name || item?.description || 'Service Item'}</strong></td>
               <td class="text-center">${qty}</td>
               <td class="text-right">${formatCurrency(rate)}</td>
               <td class="text-right"><strong>${formatCurrency(lineTotal)}</strong></td>
@@ -694,13 +723,13 @@ export function generateInvoicePdfBlob({
     </div>
 
     <div class="footer-legal" style="margin-top: 24px;">
-      Thank you for your business! Please include Invoice ${invoiceNumber} with your payment.
+      Thank you for your business! Please include Invoice ${safeInvoiceNumber} with your payment.
     </div>
   </div>
 </body>
 </html>`;
 
-  const filename = `Invoice_${sanitizeFilename(invoiceNumber)}_${sanitizeFilename(clientName)}.html`;
+  const filename = `Invoice_${sanitizeFilename(safeInvoiceNumber)}_${sanitizeFilename(safeClientName)}.html`;
   return createDocumentBlob(html, filename);
 }
 
@@ -708,19 +737,26 @@ export function generateInvoicePdfBlob({
 // 3. RECEIPT GENERATOR (PROJECT.md Interface Contract)
 // ============================================================================
 
-export function generateReceiptPdfBlob({
-  orderNumber = `POS-${Math.floor(100000 + Math.random() * 900000)}`,
-  items = [],
-  subtotal = 0,
-  tax = 0,
-  total = 0,
-  timestamp = new Date().toLocaleString(),
-  paymentMethod = 'Credit Card (Tap)',
-  businessName = 'OmniBiz Store',
-  tipAmount = 0,
-  table = null,
-  mode = 'retail'
-} = {}) {
+export function generateReceiptPdfBlob(params = {}) {
+  const {
+    orderNumber = `POS-${Math.floor(100000 + Math.random() * 900000)}`,
+    items = [],
+    subtotal = 0,
+    tax = 0,
+    total = 0,
+    timestamp = new Date().toLocaleString(),
+    paymentMethod = 'Credit Card (Tap)',
+    businessName = 'OmniBiz Store',
+    tipAmount = 0,
+    table = null,
+    mode = 'retail'
+  } = params || {};
+
+  const safeOrderNumber = orderNumber || `POS-${Math.floor(100000 + Math.random() * 900000)}`;
+  const safeBusinessName = businessName || 'OmniBiz Store';
+  const safeTimestamp = timestamp || new Date().toLocaleString();
+  const safePaymentMethod = paymentMethod || 'Credit Card (Tap)';
+
   const defaultItems = [
     { name: 'Espresso Double', qty: 2, price: 4.50 },
     { name: 'Artisan Sourdough Loaf', qty: 1, price: 8.00 }
@@ -728,16 +764,18 @@ export function generateReceiptPdfBlob({
 
   const itemsToRender = (Array.isArray(items) && items.length > 0) ? items : defaultItems;
 
-  const computedSubtotal = subtotal || itemsToRender.reduce((sum, item) => sum + (Number(item.qty || 1) * Number(item.price || item.unitPrice || 0)), 0);
-  const computedTax = tax !== undefined && tax !== null ? tax : computedSubtotal * 0.0825;
+  const computedSubtotal = (subtotal !== undefined && subtotal !== null)
+    ? Number(subtotal)
+    : itemsToRender.reduce((sum, item) => sum + (Number(item?.qty || 1) * Number(item?.price || item?.unitPrice || 0)), 0);
+  const computedTax = (tax !== undefined && tax !== null) ? Number(tax) : (computedSubtotal * 0.0825);
   const computedTip = Number(tipAmount || 0);
-  const computedTotal = total || (computedSubtotal + computedTax + computedTip);
+  const computedTotal = (total !== undefined && total !== null) ? Number(total) : (computedSubtotal + computedTax + computedTip);
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Receipt ${orderNumber}</title>
+  <title>Receipt ${safeOrderNumber}</title>
   <style>
     ${BASE_PRINT_STYLES}
     .receipt-slip {
@@ -797,21 +835,21 @@ export function generateReceiptPdfBlob({
     <button class="action-btn" onclick="window.print()">🖨️ Print Receipt</button>
   </div>
   <div class="receipt-slip">
-    <div class="receipt-title">${businessName}</div>
+    <div class="receipt-title">${safeBusinessName}</div>
     <div class="receipt-meta">
-      <div>${timestamp}</div>
-      <div>Order #${orderNumber}</div>
+      <div>${safeTimestamp}</div>
+      <div>Order #${safeOrderNumber}</div>
       ${table ? `<div>Location/Table: ${table}</div>` : ''}
-      <div>Method: ${paymentMethod}</div>
+      <div>Method: ${safePaymentMethod}</div>
     </div>
 
     <div>
       ${itemsToRender.map(item => {
-        const qty = Number(item.qty || 1);
-        const price = Number(item.price || item.unitPrice || 0);
+        const qty = Number(item?.qty || 1);
+        const price = Number(item?.price || item?.unitPrice || 0);
         return `
           <div class="receipt-item-row">
-            <span>${qty}x ${item.name || item.description}</span>
+            <span>${qty}x ${item?.name || item?.description || 'Item'}</span>
             <span>${formatCurrency(qty * price)}</span>
           </div>
         `;
@@ -843,14 +881,14 @@ export function generateReceiptPdfBlob({
     <div class="receipt-divider"></div>
 
     <div style="text-align: center; margin-top: 12px;">
-      ${renderBarcodeSvg(orderNumber)}
+      ${renderBarcodeSvg(safeOrderNumber)}
       <div style="font-size: 10px; color: #6b7280; margin-top: 8px;">THANK YOU FOR YOUR PATRONAGE!</div>
     </div>
   </div>
 </body>
 </html>`;
 
-  const filename = `Receipt_${sanitizeFilename(orderNumber)}.html`;
+  const filename = `Receipt_${sanitizeFilename(safeOrderNumber)}.html`;
   return createDocumentBlob(html, filename);
 }
 
@@ -858,28 +896,37 @@ export function generateReceiptPdfBlob({
 // 4. PAYSTUB GENERATOR (PROJECT.md Interface Contract)
 // ============================================================================
 
-export function generatePaystubPdfBlob({
-  employeeName = 'Sarah Jenkins',
-  role = 'Senior Technician',
-  payPeriod = 'Bi-Weekly (Aug 01 - Aug 15)',
-  regularHours = 40,
-  grossPay = 0,
-  deductions = 0,
-  netPay = 0,
-  company = 'OmniBiz Operations Inc.',
-  hourlyRate = 25.00,
-  overtimeHours = 0,
-  employeeId = 'EMP-1049',
-  taxes = 0,
-  date = new Date().toLocaleDateString()
-} = {}) {
+export function generatePaystubPdfBlob(params = {}) {
+  const {
+    employeeName = 'Sarah Jenkins',
+    role = 'Senior Technician',
+    payPeriod = 'Bi-Weekly (Aug 01 - Aug 15)',
+    regularHours = 40,
+    grossPay = 0,
+    deductions = 0,
+    netPay = 0,
+    company = 'OmniBiz Operations Inc.',
+    hourlyRate = 25.00,
+    overtimeHours = 0,
+    employeeId = 'EMP-1049',
+    taxes = 0,
+    date = new Date().toLocaleDateString()
+  } = params || {};
+
+  const safeEmployeeName = employeeName || 'Sarah Jenkins';
+  const safeRole = role || 'Senior Technician';
+  const safePayPeriod = payPeriod || 'Bi-Weekly (Aug 01 - Aug 15)';
+  const safeCompany = company || 'OmniBiz Operations Inc.';
+  const safeEmployeeId = employeeId || 'EMP-1049';
+  const safeDate = date || new Date().toLocaleDateString();
+
   const regHrs = Number(regularHours || 40);
   const otHrs = Number(overtimeHours || 0);
   const rate = Number(hourlyRate || 25);
 
   const regPay = regHrs * rate;
   const otPay = otHrs * (rate * 1.5);
-  const computedGross = grossPay || (regPay + otPay);
+  const computedGross = Number(grossPay || (regPay + otPay));
   
   let fitTax = computedGross * 0.0765;
   let ficaTax = computedGross * 0.0535;
@@ -890,7 +937,7 @@ export function generatePaystubPdfBlob({
 
   if (Array.isArray(deductions) && deductions.length > 0) {
     deductionsList = deductions;
-    computedDeductions = deductions.reduce((sum, d) => sum + Number(d.amount || 0), 0);
+    computedDeductions = deductions.reduce((sum, d) => sum + Number(d?.amount || 0), 0);
   } else if (typeof deductions === 'number' && deductions > 0) {
     computedDeductions = deductions;
     deductionsList = [
@@ -907,13 +954,13 @@ export function generatePaystubPdfBlob({
     ];
   }
 
-  const computedNet = netPay || (computedGross - computedDeductions);
+  const computedNet = Number(netPay || (computedGross - computedDeductions));
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Paystub — ${employeeName} — ${payPeriod}</title>
+  <title>Paystub — ${safeEmployeeName} — ${safePayPeriod}</title>
   <style>
     ${BASE_PRINT_STYLES}
     .paystub-split {
@@ -947,26 +994,26 @@ export function generatePaystubPdfBlob({
   <div class="doc-container">
     <div class="header-banner">
       <div>
-        <div class="company-brand">${company}</div>
+        <div class="company-brand">${safeCompany}</div>
         <div class="company-sub">Official Payroll &amp; Earnings Statement</div>
       </div>
       <div class="doc-title-box">
         <span class="doc-type-badge">DIRECT DEPOSIT STATEMENT</span>
-        <div class="doc-id-number">${employeeId}</div>
-        <div class="doc-date-text">${payPeriod}</div>
+        <div class="doc-id-number">${safeEmployeeId}</div>
+        <div class="doc-date-text">${safePayPeriod}</div>
       </div>
     </div>
 
     <div class="meta-grid">
       <div>
         <div class="meta-title">Employee Details</div>
-        <div class="meta-value-bold">${employeeName}</div>
-        <div class="meta-value-sub">Role: ${role} | Hourly Base: ${formatCurrency(rate)}/hr</div>
+        <div class="meta-value-bold">${safeEmployeeName}</div>
+        <div class="meta-value-sub">Role: ${safeRole} | Hourly Base: ${formatCurrency(rate)}/hr</div>
       </div>
       <div>
         <div class="meta-title">Statement Summary</div>
         <div class="meta-value-bold">Regular Hours: ${regHrs} hrs</div>
-        <div class="meta-value-sub">Overtime Hours: ${otHrs} hrs | Issued: ${date}</div>
+        <div class="meta-value-sub">Overtime Hours: ${otHrs} hrs | Issued: ${safeDate}</div>
       </div>
     </div>
 
@@ -993,8 +1040,8 @@ export function generatePaystubPdfBlob({
         <div class="meta-title" style="color: #b91c1c; margin-bottom: 10px;">TAXES &amp; WITHHOLDINGS</div>
         ${deductionsList.map(d => `
           <div class="total-line">
-            <span>${d.name}:</span>
-            <span>-${formatCurrency(d.amount)}</span>
+            <span>${d?.name || 'Withholding'}:</span>
+            <span>-${formatCurrency(d?.amount || 0)}</span>
           </div>
         `).join('')}
         <div class="total-line" style="border-top: 1px solid #d1d5db; padding-top: 8px; font-weight: 700; color: #b91c1c;">
@@ -1022,7 +1069,7 @@ export function generatePaystubPdfBlob({
 </body>
 </html>`;
 
-  const filename = `Paystub_${sanitizeFilename(employeeName)}_${sanitizeFilename(payPeriod)}.html`;
+  const filename = `Paystub_${sanitizeFilename(safeEmployeeName)}_${sanitizeFilename(safePayPeriod)}.html`;
   return createDocumentBlob(html, filename);
 }
 
@@ -1030,18 +1077,25 @@ export function generatePaystubPdfBlob({
 // 5. SEO AUDIT GENERATOR (PROJECT.md Interface Contract)
 // ============================================================================
 
-export function generateSeoAuditPdfBlob({
-  domain = 'example.com',
-  auditScore = 88,
-  metrics = {},
-  issues = [],
-  recommendations = [],
-  businessName = 'OmniBiz AI',
-  category = 'Local Trade Business',
-  date = new Date().toLocaleDateString()
-} = {}) {
-  const scoreNum = Number(auditScore || 85);
+export function generateSeoAuditPdfBlob(params = {}) {
+  const {
+    domain = 'example.com',
+    auditScore = 88,
+    metrics = {},
+    issues = [],
+    recommendations = [],
+    businessName = 'OmniBiz AI',
+    category = 'Local Trade Business',
+    date = new Date().toLocaleDateString()
+  } = params || {};
+
+  const safeDomain = domain || 'example.com';
+  const safeMetrics = metrics && typeof metrics === 'object' ? metrics : {};
+  const scoreNum = Number(auditScore !== undefined && auditScore !== null ? auditScore : 88);
   const scoreColor = scoreNum >= 80 ? '#059669' : scoreNum >= 50 ? '#d97706' : '#dc2626';
+  const safeBusinessName = businessName || 'OmniBiz AI';
+  const safeCategory = category || 'Local Trade Business';
+  const safeDate = date || new Date().toLocaleDateString();
 
   const defaultIssues = [
     { title: 'Local Search Schema Microdata', status: 'Passed', detail: 'LocalBusiness Schema.org JSON-LD correctly formatted.' },
@@ -1062,7 +1116,7 @@ export function generateSeoAuditPdfBlob({
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>SEO Audit Diagnostic — ${domain}</title>
+  <title>SEO Audit Diagnostic — ${safeDomain}</title>
   <style>
     ${BASE_PRINT_STYLES}
     .score-dial-card {
@@ -1097,13 +1151,13 @@ export function generateSeoAuditPdfBlob({
   <div class="doc-container">
     <div class="header-banner">
       <div>
-        <div class="company-brand">${businessName}</div>
+        <div class="company-brand">${safeBusinessName}</div>
         <div class="company-sub">Technical SEO, Core Web Vitals &amp; Local Visibility Audit</div>
       </div>
       <div class="doc-title-box">
         <span class="doc-type-badge">SEO DIAGNOSTIC</span>
-        <div class="doc-id-number">${domain}</div>
-        <div class="doc-date-text">Analyzed: ${date}</div>
+        <div class="doc-id-number">${safeDomain}</div>
+        <div class="doc-date-text">Analyzed: ${safeDate}</div>
       </div>
     </div>
 
@@ -1112,7 +1166,7 @@ export function generateSeoAuditPdfBlob({
       <div>
         <h3 style="font-size: 16px; margin-bottom: 4px;">Overall Search Visibility &amp; Technical Health</h3>
         <p style="font-size: 12px; color: #4b5563;">
-          Target Domain: <strong>${domain}</strong> | Category: <strong>${category}</strong>. ${metrics.speedRating ? `Speed: ${metrics.speedRating}.` : ''}
+          Target Domain: <strong>${safeDomain}</strong> | Category: <strong>${safeCategory}</strong>. ${safeMetrics.speedRating ? `Speed: ${safeMetrics.speedRating}.` : ''}
         </p>
       </div>
     </div>
@@ -1130,9 +1184,9 @@ export function generateSeoAuditPdfBlob({
         <tbody>
           ${issuesToRender.map(iss => `
             <tr>
-              <td><strong>${typeof iss === 'string' ? iss : (iss.title || iss.name || 'Check')}</strong></td>
-              <td><span style="color: #059669; font-weight: 700;">${iss.status || 'Verified'}</span></td>
-              <td style="font-size: 12px; color: #4b5563;">${typeof iss === 'string' ? iss : (iss.detail || iss.description || 'Compliant')}</td>
+              <td><strong>${typeof iss === 'string' ? iss : (iss?.title || iss?.name || 'Check')}</strong></td>
+              <td><span style="color: #059669; font-weight: 700;">${(typeof iss === 'object' && iss?.status) ? iss.status : 'Verified'}</span></td>
+              <td style="font-size: 12px; color: #4b5563;">${typeof iss === 'string' ? iss : (iss?.detail || iss?.description || 'Compliant')}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -1142,7 +1196,7 @@ export function generateSeoAuditPdfBlob({
     <div class="avoid-break" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 18px; margin-bottom: 24px;">
       <h4 style="font-size: 13px; color: #166534; margin-bottom: 8px;">Actionable Strategic Recommendations</h4>
       <ul style="padding-left: 20px; font-size: 12px; color: #15803d; line-height: 1.6;">
-        ${recsToRender.map(r => `<li>${typeof r === 'string' ? r : (r.text || r.title || '')}</li>`).join('')}
+        ${recsToRender.map(r => `<li>${typeof r === 'string' ? r : (r?.text || r?.title || '')}</li>`).join('')}
       </ul>
     </div>
 
@@ -1153,7 +1207,7 @@ export function generateSeoAuditPdfBlob({
 </body>
 </html>`;
 
-  const filename = `SEO_Audit_${sanitizeFilename(domain)}_${Date.now()}.html`;
+  const filename = `SEO_Audit_${sanitizeFilename(safeDomain)}_${Date.now()}.html`;
   return createDocumentBlob(html, filename);
 }
 
@@ -1161,21 +1215,32 @@ export function generateSeoAuditPdfBlob({
 // 6. WARRANTY REGISTRATION GENERATOR
 // ============================================================================
 
-export function generateWarrantyRegistrationPdfBlob({
-  ownerName = 'Robert & Linda Chen',
-  propertyAddress = '3210 Barton Skyway, Austin, TX 78704',
-  systemType = 'GAF Golden Pledge Complete Roof System',
-  shingles = 'GAF Timberline HDZ (Color: Charcoal)',
-  installerCert = 'ME-GAF-99421 (Master Elite Certified)',
-  date = new Date().toLocaleDateString(),
-  manufacturer = 'GAF',
-  warrantyTier = 'Golden Pledge (25-Yr Workmanship, 50-Yr Material)',
-  registrationId = `WR-${Date.now().toString().slice(-6)}`,
-  components = [],
-  businessData = {}
-} = {}) {
+export function generateWarrantyRegistrationPdfBlob(params = {}) {
+  const {
+    ownerName = 'Robert & Linda Chen',
+    propertyAddress = '3210 Barton Skyway, Austin, TX 78704',
+    systemType = 'GAF Golden Pledge Complete Roof System',
+    shingles = 'GAF Timberline HDZ (Color: Charcoal)',
+    installerCert = 'ME-GAF-99421 (Master Elite Certified)',
+    date = new Date().toLocaleDateString(),
+    manufacturer = 'GAF',
+    warrantyTier = 'Golden Pledge (25-Yr Workmanship, 50-Yr Material)',
+    registrationId = `WR-${Date.now().toString().slice(-6)}`,
+    components = [],
+    businessData = {}
+  } = params || {};
+
+  const safeOwnerName = ownerName || 'Robert & Linda Chen';
+  const safePropertyAddress = propertyAddress || '3210 Barton Skyway, Austin, TX 78704';
+  const safeManufacturer = manufacturer || 'GAF';
+  const safeWarrantyTier = warrantyTier || 'Golden Pledge (25-Yr Workmanship, 50-Yr Material)';
+  const safeRegistrationId = registrationId || `WR-${Date.now().toString().slice(-6)}`;
+  const safeShingles = shingles || 'GAF Timberline HDZ (Color: Charcoal)';
+  const safeInstallerCert = installerCert || 'ME-GAF-99421 (Master Elite Certified)';
+  const safeDate = date || new Date().toLocaleDateString();
+
   const defaultComponents = [
-    { name: '1. Lifetime Architectural Shingles', product: shingles },
+    { name: '1. Lifetime Architectural Shingles', product: safeShingles },
     { name: '2. Roof Deck Synthetic Underlayment', product: 'GAF Deck-Armor Breathable' },
     { name: '3. Starter Strip Shingles', product: 'GAF WeatherBlocker Starter' },
     { name: '4. Leak Barrier / Ice & Water Shield', product: 'GAF WeatherWatch Mineral Surfaced' },
@@ -1189,7 +1254,7 @@ export function generateWarrantyRegistrationPdfBlob({
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Warranty Certificate — ${registrationId}</title>
+  <title>Warranty Certificate — ${safeRegistrationId}</title>
   <style>
     ${BASE_PRINT_STYLES}
     .cert-frame {
@@ -1228,19 +1293,19 @@ export function generateWarrantyRegistrationPdfBlob({
     <div class="cert-frame">
       <div class="cert-seal">${renderGoldWarrantySealSvg()}</div>
 
-      <div class="cert-title">${manufacturer} CERTIFIED WARRANTY</div>
-      <div class="cert-sub">${warrantyTier} • Certificate ID: ${registrationId}</div>
+      <div class="cert-title">${safeManufacturer} CERTIFIED WARRANTY</div>
+      <div class="cert-sub">${safeWarrantyTier} • Certificate ID: ${safeRegistrationId}</div>
 
       <div class="meta-grid" style="background: #fffbeb; border-color: #fef3c7;">
         <div>
           <div class="meta-title" style="color: #92400e;">Property Owner(s)</div>
-          <div class="meta-value-bold">${ownerName}</div>
-          <div class="meta-value-sub">${propertyAddress}</div>
+          <div class="meta-value-bold">${safeOwnerName}</div>
+          <div class="meta-value-sub">${safePropertyAddress}</div>
         </div>
         <div>
           <div class="meta-title" style="color: #92400e;">Installation &amp; Warranty Terms</div>
-          <div class="meta-value-bold">Installer ID: ${installerCert}</div>
-          <div class="meta-value-sub">Date of Certified Installation: ${date}</div>
+          <div class="meta-value-bold">Installer ID: ${safeInstallerCert}</div>
+          <div class="meta-value-sub">Date of Certified Installation: ${safeDate}</div>
         </div>
       </div>
 
@@ -1258,8 +1323,8 @@ export function generateWarrantyRegistrationPdfBlob({
         <tbody>
           ${componentsToRender.map(c => `
             <tr>
-              <td><strong>${typeof c === 'string' ? c : (c.name || 'Component')}</strong></td>
-              <td style="color: #4b5563;">${typeof c === 'string' ? c : (c.product || c.description || 'Certified')}</td>
+              <td><strong>${typeof c === 'string' ? c : (c?.name || 'Component')}</strong></td>
+              <td style="color: #4b5563;">${typeof c === 'string' ? c : (c?.product || c?.brandModel || c?.description || 'Certified')}</td>
               <td class="text-right" style="color: #059669; font-weight: 700;">✓ VERIFIED</td>
             </tr>
           `).join('')}
@@ -1267,7 +1332,7 @@ export function generateWarrantyRegistrationPdfBlob({
       </table>
 
       <div class="avoid-break" style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 14px; font-size: 11px; color: #92400e; line-height: 1.5; margin-bottom: 16px;">
-        <strong>Manufacturer Guarantee:</strong> This warranty certifies that the building envelope at the listed property is protected under the full terms of the ${manufacturer} ${warrantyTier}. Includes non-prorated material protection and certified contractor workmanship coverage.
+        <strong>Manufacturer Guarantee:</strong> This warranty certifies that the building envelope at the listed property is protected under the full terms of the ${safeManufacturer} ${safeWarrantyTier}. Includes non-prorated material protection and certified contractor workmanship coverage.
       </div>
 
       <div class="footer-legal">
@@ -1278,7 +1343,7 @@ export function generateWarrantyRegistrationPdfBlob({
 </body>
 </html>`;
 
-  const filename = `Warranty_Certificate_${sanitizeFilename(registrationId)}_${sanitizeFilename(ownerName)}.html`;
+  const filename = `Warranty_Certificate_${sanitizeFilename(safeRegistrationId)}_${sanitizeFilename(safeOwnerName)}.html`;
   return createDocumentBlob(html, filename);
 }
 
@@ -1286,27 +1351,42 @@ export function generateWarrantyRegistrationPdfBlob({
 // 7. TRADE ESTIMATE GENERATOR
 // ============================================================================
 
-export function generateTradeEstimatePdfBlob({
-  estimateNumber = `EST-${Date.now().toString().slice(-5)}`,
-  clientName = 'Valued Client',
-  clientPhone = 'N/A',
-  jobDescription = 'Trade Job Description',
-  laborHours = 2.0,
-  laborRate = 95.0,
-  totalLaborCost = 190.0,
-  parts = [],
-  totalPartsCost = 0,
-  grandTotalEstimate = 190.0,
-  date = new Date().toLocaleDateString(),
-  businessData = {}
-} = {}) {
-  const companyName = businessData?.name || 'OmniBiz Trades';
+export function generateTradeEstimatePdfBlob(params = {}) {
+  const {
+    estimateNumber = `EST-${Date.now().toString().slice(-5)}`,
+    clientName = 'Valued Client',
+    clientPhone = 'N/A',
+    jobDescription = 'Trade Job Description',
+    laborHours = 2.0,
+    laborRate = 95.0,
+    totalLaborCost = 190.0,
+    parts = [],
+    totalPartsCost = 0,
+    grandTotalEstimate = 190.0,
+    date = new Date().toLocaleDateString(),
+    businessData = {}
+  } = params || {};
+
+  const safeBiz = businessData && typeof businessData === 'object' ? businessData : {};
+  const safeEstimateNumber = estimateNumber || `EST-${Date.now().toString().slice(-5)}`;
+  const safeClientName = clientName || 'Valued Client';
+  const safeClientPhone = clientPhone || 'N/A';
+  const safeJobDesc = jobDescription || 'Trade Job Description';
+  const companyName = safeBiz.name || 'OmniBiz Trades';
+  const safeDate = date || new Date().toLocaleDateString();
+
+  const safeLaborHours = Number(laborHours || 2.0);
+  const safeLaborRate = Number(laborRate || 95.0);
+  const safeTotalLaborCost = Number(totalLaborCost !== undefined && totalLaborCost !== null ? totalLaborCost : (safeLaborHours * safeLaborRate));
+  const partsToRender = Array.isArray(parts) ? parts : [];
+  const safeTotalPartsCost = Number(totalPartsCost !== undefined && totalPartsCost !== null ? totalPartsCost : partsToRender.reduce((sum, p) => sum + (Number(p?.qty || 1) * Number(p?.unitPrice || p?.price || 0)), 0));
+  const safeGrandTotal = Number(grandTotalEstimate !== undefined && grandTotalEstimate !== null ? grandTotalEstimate : (safeTotalLaborCost + safeTotalPartsCost));
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Job Estimate ${estimateNumber} — ${clientName}</title>
+  <title>Job Estimate ${safeEstimateNumber} — ${safeClientName}</title>
   <style>
     ${BASE_PRINT_STYLES}
   </style>
@@ -1323,20 +1403,20 @@ export function generateTradeEstimatePdfBlob({
       </div>
       <div class="doc-title-box">
         <span class="doc-type-badge">JOB ESTIMATE</span>
-        <div class="doc-id-number">${estimateNumber}</div>
-        <div class="doc-date-text">Date: ${date}</div>
+        <div class="doc-id-number">${safeEstimateNumber}</div>
+        <div class="doc-date-text">Date: ${safeDate}</div>
       </div>
     </div>
 
     <div class="meta-grid">
       <div>
         <div class="meta-title">Client Details</div>
-        <div class="meta-value-bold">${clientName}</div>
-        <div class="meta-value-sub">Phone: ${clientPhone}</div>
+        <div class="meta-value-bold">${safeClientName}</div>
+        <div class="meta-value-sub">Phone: ${safeClientPhone}</div>
       </div>
       <div>
         <div class="meta-title">Scope of Work</div>
-        <div class="meta-value-bold">${jobDescription}</div>
+        <div class="meta-value-bold">${safeJobDesc}</div>
         <div class="meta-value-sub">Status: Quote Ready for Approval</div>
       </div>
     </div>
@@ -1355,17 +1435,17 @@ export function generateTradeEstimatePdfBlob({
         <tr>
           <td><strong>Labor</strong></td>
           <td>Technical Field Labor &amp; Diagnostic</td>
-          <td class="text-center">${laborHours} hrs</td>
-          <td class="text-right">${formatCurrency(laborRate)}/hr</td>
-          <td class="text-right"><strong>${formatCurrency(totalLaborCost)}</strong></td>
+          <td class="text-center">${safeLaborHours} hrs</td>
+          <td class="text-right">${formatCurrency(safeLaborRate)}/hr</td>
+          <td class="text-right"><strong>${formatCurrency(safeTotalLaborCost)}</strong></td>
         </tr>
-        ${parts.map((p, i) => `
+        ${partsToRender.map((p, i) => `
           <tr>
             <td><strong>Parts</strong></td>
-            <td>${p.name || `Part Item ${i + 1}`}</td>
-            <td class="text-center">${p.qty || 1}</td>
-            <td class="text-right">${formatCurrency(p.unitPrice || p.price || 0)}</td>
-            <td class="text-right"><strong>${formatCurrency((p.qty || 1) * (p.unitPrice || p.price || 0))}</strong></td>
+            <td>${p?.name || p?.description || `Part Item ${i + 1}`}</td>
+            <td class="text-center">${p?.qty || 1}</td>
+            <td class="text-right">${formatCurrency(p?.unitPrice || p?.price || 0)}</td>
+            <td class="text-right"><strong>${formatCurrency((Number(p?.qty || 1)) * (Number(p?.unitPrice || p?.price || 0)))}</strong></td>
           </tr>
         `).join('')}
       </tbody>
@@ -1375,15 +1455,15 @@ export function generateTradeEstimatePdfBlob({
       <div class="totals-card">
         <div class="total-line">
           <span>Labor Total:</span>
-          <span>${formatCurrency(totalLaborCost)}</span>
+          <span>${formatCurrency(safeTotalLaborCost)}</span>
         </div>
         <div class="total-line">
           <span>Parts Total:</span>
-          <span>${formatCurrency(totalPartsCost)}</span>
+          <span>${formatCurrency(safeTotalPartsCost)}</span>
         </div>
         <div class="total-line grand-total">
           <span>Estimate Total:</span>
-          <span>${formatCurrency(grandTotalEstimate)}</span>
+          <span>${formatCurrency(safeGrandTotal)}</span>
         </div>
       </div>
     </div>
@@ -1395,7 +1475,7 @@ export function generateTradeEstimatePdfBlob({
 </body>
 </html>`;
 
-  const filename = `Estimate_${sanitizeFilename(estimateNumber)}_${sanitizeFilename(clientName)}.html`;
+  const filename = `Estimate_${sanitizeFilename(safeEstimateNumber)}_${sanitizeFilename(safeClientName)}.html`;
   return createDocumentBlob(html, filename);
 }
 
@@ -1403,31 +1483,55 @@ export function generateTradeEstimatePdfBlob({
 // 8. MILESTONE PROPOSAL GENERATOR (Plumbing/HVAC)
 // ============================================================================
 
-export function generateMilestoneProposalPdfBlob({
-  customerName = 'Sarah Jenkins',
-  customerPhone = '(512) 555-8921',
-  customerEmail = 's.jenkins@example.com',
-  jobAddress = '1044 Barton Springs Rd, Austin, TX',
-  selectedTier = 'better',
-  quoteTiers = {},
-  equipmentCost = 3800,
-  laborHours = 14,
-  laborRate = 150,
-  materialsCost = 650,
-  totalPrice = 8500,
-  grossMarginPercent = '62.5',
-  milestones = [],
-  financingOptions = [],
-  businessData = {},
-  date = new Date().toLocaleDateString()
-} = {}) {
-  const companyName = businessData?.name || 'OmniBiz HVAC & Plumbing';
+export function generateMilestoneProposalPdfBlob(params = {}) {
+  const {
+    customerName = 'Sarah Jenkins',
+    customerPhone = '(512) 555-8921',
+    customerEmail = 's.jenkins@example.com',
+    jobAddress = '1044 Barton Springs Rd, Austin, TX',
+    selectedTier = 'better',
+    quoteTiers = {},
+    equipmentCost = 3800,
+    laborHours = 14,
+    laborRate = 150,
+    materialsCost = 650,
+    totalPrice = 8500,
+    grossMarginPercent = '62.5',
+    milestones = [],
+    financingOptions = [],
+    businessData = {},
+    date = new Date().toLocaleDateString()
+  } = params || {};
+
+  const safeBiz = businessData && typeof businessData === 'object' ? businessData : {};
+  const safeCustomerName = customerName || 'Sarah Jenkins';
+  const safeCustomerPhone = customerPhone || '(512) 555-8921';
+  const safeJobAddress = jobAddress || '1044 Barton Springs Rd, Austin, TX';
+  const safeSelectedTier = selectedTier || 'better';
+  const safeTotalPrice = Number(totalPrice !== undefined && totalPrice !== null ? totalPrice : 8500);
+  const safeGrossMargin = grossMarginPercent || '62.5';
+  const companyName = safeBiz.name || 'OmniBiz HVAC & Plumbing';
+  const safeDate = date || new Date().toLocaleDateString();
+
+  const defaultMilestones = [
+    { phase: 'Phase 1: Initial Deposit & Equipment Sourcing', amount: safeTotalPrice * 0.4, status: 'Due at contract signing' },
+    { phase: 'Phase 2: Rough-In & Line Set Installation', amount: safeTotalPrice * 0.3, status: 'Due at rough-in inspection' },
+    { phase: 'Phase 3: Final Commissioning & EPA Deep Vacuum', amount: safeTotalPrice * 0.3, status: 'Due at final walkthrough' }
+  ];
+
+  const defaultFinancing = [
+    { term: '12 Months Same-As-Cash (0% APR)', monthlyPayment: safeTotalPrice / 12 },
+    { term: '60 Months Low-Interest (7.99% APR)', monthlyPayment: (safeTotalPrice * 1.2) / 60 }
+  ];
+
+  const milestonesToRender = (Array.isArray(milestones) && milestones.length > 0) ? milestones : defaultMilestones;
+  const financingToRender = (Array.isArray(financingOptions) && financingOptions.length > 0) ? financingOptions : defaultFinancing;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>HVAC Proposal — ${customerName}</title>
+  <title>HVAC Proposal — ${safeCustomerName}</title>
   <style>
     ${BASE_PRINT_STYLES}
   </style>
@@ -1444,21 +1548,21 @@ export function generateMilestoneProposalPdfBlob({
       </div>
       <div class="doc-title-box">
         <span class="doc-type-badge">MILESTONE PROPOSAL</span>
-        <div class="doc-id-number">${formatCurrency(totalPrice)}</div>
-        <div class="doc-date-text">Date: ${date}</div>
+        <div class="doc-id-number">${formatCurrency(safeTotalPrice)}</div>
+        <div class="doc-date-text">Date: ${safeDate}</div>
       </div>
     </div>
 
     <div class="meta-grid">
       <div>
         <div class="meta-title">Prepared For</div>
-        <div class="meta-value-bold">${customerName}</div>
-        <div class="meta-value-sub">${jobAddress} • ${customerPhone}</div>
+        <div class="meta-value-bold">${safeCustomerName}</div>
+        <div class="meta-value-sub">${safeJobAddress} • ${safeCustomerPhone}</div>
       </div>
       <div>
         <div class="meta-title">Selected Option</div>
-        <div class="meta-value-bold" style="text-transform: capitalize;">${selectedTier} Tier System</div>
-        <div class="meta-value-sub">Gross Margin Floor: ${grossMarginPercent}% Protected</div>
+        <div class="meta-value-bold" style="text-transform: capitalize;">${safeSelectedTier} Tier System</div>
+        <div class="meta-value-sub">Gross Margin Floor: ${safeGrossMargin}% Protected</div>
       </div>
     </div>
 
@@ -1472,11 +1576,11 @@ export function generateMilestoneProposalPdfBlob({
         </tr>
       </thead>
       <tbody>
-        ${milestones.map((m, idx) => `
+        ${milestonesToRender.map((m, idx) => `
           <tr>
             <td><strong>Stage ${idx + 1}</strong></td>
-            <td>${m.phase || m.name} <br/><span style="font-size: 11px; color: #6b7280;">${m.status || ''}</span></td>
-            <td class="text-right"><strong>${formatCurrency(m.amount)}</strong></td>
+            <td>${m?.phase || m?.name || `Phase ${idx + 1}`} <br/><span style="font-size: 11px; color: #6b7280;">${m?.status || ''}</span></td>
+            <td class="text-right"><strong>${formatCurrency(m?.amount || 0)}</strong></td>
           </tr>
         `).join('')}
       </tbody>
@@ -1485,9 +1589,9 @@ export function generateMilestoneProposalPdfBlob({
     <div class="avoid-break" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 14px; margin-bottom: 20px;">
       <h4 style="font-size: 12px; color: #4f46e5; margin-bottom: 6px;">Available Flexible Financing Options</h4>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        ${financingOptions.map(f => `
+        ${financingToRender.map(f => `
           <div style="font-size: 12px; color: #374151;">
-            <strong>${f.term}:</strong> ${formatCurrency(f.monthlyPayment)}/mo
+            <strong>${f?.term || 'Financing Option'}:</strong> ${formatCurrency(f?.monthlyPayment || 0)}/mo
           </div>
         `).join('')}
       </div>
@@ -1500,7 +1604,7 @@ export function generateMilestoneProposalPdfBlob({
 </body>
 </html>`;
 
-  const filename = `Proposal_HVAC_${sanitizeFilename(customerName)}_${Date.now()}.html`;
+  const filename = `Proposal_HVAC_${sanitizeFilename(safeCustomerName)}_${Date.now()}.html`;
   return createDocumentBlob(html, filename);
 }
 
@@ -1508,25 +1612,47 @@ export function generateMilestoneProposalPdfBlob({
 // 9. COMPLIANCE CERTIFICATE GENERATOR (UPC/NEC)
 // ============================================================================
 
-export function generateComplianceCertificatePdfBlob({
-  jobAddress = '1044 Barton Springs Rd, Austin, TX',
-  masterTechLicense = 'M-39821-TX',
-  pipePressurePsi = 80,
-  isOverpressure = false,
-  complianceScore = 100,
-  passedCount = 6,
-  totalCount = 6,
-  checks = [],
-  businessData = {},
-  date = new Date().toLocaleDateString()
-} = {}) {
-  const companyName = businessData?.name || 'OmniBiz Trades';
+export function generateComplianceCertificatePdfBlob(params = {}) {
+  const {
+    jobAddress = '1044 Barton Springs Rd, Austin, TX',
+    masterTechLicense = 'M-39821-TX',
+    pipePressurePsi = 80,
+    isOverpressure = false,
+    complianceScore = 100,
+    passedCount = 6,
+    totalCount = 6,
+    checks = [],
+    businessData = {},
+    date = new Date().toLocaleDateString()
+  } = params || {};
+
+  const safeBiz = businessData && typeof businessData === 'object' ? businessData : {};
+  const safeJobAddress = jobAddress || '1044 Barton Springs Rd, Austin, TX';
+  const safeMasterTechLicense = masterTechLicense || 'M-39821-TX';
+  const safePressure = Number(pipePressurePsi !== undefined && pipePressurePsi !== null ? pipePressurePsi : 80);
+  const safeIsOverpressure = Boolean(isOverpressure);
+  const safeScore = Number(complianceScore !== undefined && complianceScore !== null ? complianceScore : 100);
+  const safePassed = Number(passedCount !== undefined && passedCount !== null ? passedCount : 6);
+  const safeTotal = Number(totalCount !== undefined && totalCount !== null ? totalCount : 6);
+  const companyName = safeBiz.name || 'OmniBiz Trades';
+  const safeDate = date || new Date().toLocaleDateString();
+
+  const defaultChecks = [
+    { code: 'UPC 608.2', title: 'Static Water Supply Pressure (Max 80 PSI / PRV Required)' },
+    { code: 'UPC 708.1', title: 'DWV Minimum Slope 1/4" per foot' },
+    { code: 'UPC 608.5', title: 'Water Heater TPR Valve Discharge' },
+    { code: 'NEC 110.26', title: 'Electrical Service Panel Working Space' },
+    { code: 'NEC 210.8', title: 'GFCI Wet Area Protection' },
+    { code: 'EPA 608.1', title: 'EPA Section 608 Vacuum Hold' }
+  ];
+
+  const checksToRender = (Array.isArray(checks) && checks.length > 0) ? checks : defaultChecks;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>UPC/NEC Compliance Certificate — ${jobAddress}</title>
+  <title>UPC/NEC Compliance Certificate — ${safeJobAddress}</title>
   <style>
     ${BASE_PRINT_STYLES}
   </style>
@@ -1543,21 +1669,21 @@ export function generateComplianceCertificatePdfBlob({
       </div>
       <div class="doc-title-box">
         <span class="doc-type-badge">CODE VERIFIED</span>
-        <div class="doc-id-number">${complianceScore}% Score</div>
-        <div class="doc-date-text">Date: ${date}</div>
+        <div class="doc-id-number">${safeScore}% Score</div>
+        <div class="doc-date-text">Date: ${safeDate}</div>
       </div>
     </div>
 
     <div class="meta-grid">
       <div>
         <div class="meta-title">Inspection Site</div>
-        <div class="meta-value-bold">${jobAddress}</div>
-        <div class="meta-value-sub">Master Tech License: ${masterTechLicense}</div>
+        <div class="meta-value-bold">${safeJobAddress}</div>
+        <div class="meta-value-sub">Master Tech License: ${safeMasterTechLicense}</div>
       </div>
       <div>
         <div class="meta-title">Pressure &amp; Electrical Safety</div>
-        <div class="meta-value-bold">Pressure: ${pipePressurePsi} PSI (${isOverpressure ? 'PRV Required' : 'Normal Range'})</div>
-        <div class="meta-value-sub">Verified Checks: ${passedCount} / ${totalCount} Passed</div>
+        <div class="meta-value-bold">Pressure: ${safePressure} PSI (${safeIsOverpressure ? 'PRV Required' : 'Normal Range'})</div>
+        <div class="meta-value-sub">Verified Checks: ${safePassed} / ${safeTotal} Passed</div>
       </div>
     </div>
 
@@ -1570,10 +1696,10 @@ export function generateComplianceCertificatePdfBlob({
         </tr>
       </thead>
       <tbody>
-        ${checks.map(c => `
+        ${checksToRender.map(c => `
           <tr>
-            <td><strong>${c.code || c.name || 'Code Section'}</strong></td>
-            <td style="font-size: 12px; color: #4b5563;">${c.title || c.description || 'Compliance Standard'}</td>
+            <td><strong>${c?.code || c?.name || 'Code Section'}</strong></td>
+            <td style="font-size: 12px; color: #4b5563;">${c?.title || c?.description || 'Compliance Standard'}</td>
             <td class="text-right" style="color: #059669; font-weight: 700;">✓ PASSED</td>
           </tr>
         `).join('')}
@@ -1595,31 +1721,54 @@ export function generateComplianceCertificatePdfBlob({
 // 10. REPAIR ORDER (RO) & ESTIMATE GENERATOR (Auto Repair)
 // ============================================================================
 
-export function generateRepairOrderPdfBlob({
-  roNumber = `RO-2026-${Date.now().toString().slice(-5)}`,
-  vehicleProfile = {},
-  customerName = 'Valued Customer',
-  customerPhone = 'N/A',
-  laborRate = 165.0,
-  totalLaborHours = 3.5,
-  totalLaborPrice = 577.50,
-  partsRetailTotal = 320.00,
-  shopSuppliesFee = 28.88,
-  estimatedTax = 72.35,
-  grandTotalEstimate = 998.73,
-  grossMargin = '64.5',
-  lineItems = [],
-  businessData = {},
-  date = new Date().toLocaleDateString()
-} = {}) {
-  const companyName = businessData?.name || 'OmniBiz Auto Services';
-  const vehicleStr = `${vehicleProfile.modelYear || ''} ${vehicleProfile.make || ''} ${vehicleProfile.model || ''}`.trim() || 'Customer Vehicle';
+export function generateRepairOrderPdfBlob(params = {}) {
+  const {
+    roNumber = `RO-2026-${Date.now().toString().slice(-5)}`,
+    vehicleProfile = {},
+    customerName = 'Valued Customer',
+    customerPhone = 'N/A',
+    laborRate = 165.0,
+    totalLaborHours = 3.5,
+    totalLaborPrice = 577.50,
+    partsRetailTotal = 320.00,
+    shopSuppliesFee = 28.88,
+    estimatedTax = 72.35,
+    grandTotalEstimate = 998.73,
+    grossMargin = '64.5',
+    lineItems = [],
+    businessData = {},
+    date = new Date().toLocaleDateString()
+  } = params || {};
+
+  const safeBiz = businessData && typeof businessData === 'object' ? businessData : {};
+  const safeRoNumber = roNumber || `RO-2026-${Date.now().toString().slice(-5)}`;
+  const safeCustomerName = customerName || 'Valued Customer';
+  const safeCustomerPhone = customerPhone || 'N/A';
+  const safeVehicle = vehicleProfile && typeof vehicleProfile === 'object' ? vehicleProfile : {};
+  const vehicleStr = `${safeVehicle.modelYear || ''} ${safeVehicle.make || ''} ${safeVehicle.model || ''}`.trim() || 'Customer Vehicle';
+  const companyName = safeBiz.name || 'OmniBiz Auto Services';
+  const safeDate = date || new Date().toLocaleDateString();
+
+  const safeLaborRate = Number(laborRate || 165.0);
+  const safeTotalLaborPrice = Number(totalLaborPrice !== undefined && totalLaborPrice !== null ? totalLaborPrice : 577.50);
+  const safePartsRetailTotal = Number(partsRetailTotal !== undefined && partsRetailTotal !== null ? partsRetailTotal : 320.00);
+  const safeShopSuppliesFee = Number(shopSuppliesFee !== undefined && shopSuppliesFee !== null ? shopSuppliesFee : 28.88);
+  const safeEstimatedTax = Number(estimatedTax !== undefined && estimatedTax !== null ? estimatedTax : 72.35);
+  const safeGrandTotalEstimate = Number(grandTotalEstimate !== undefined && grandTotalEstimate !== null ? grandTotalEstimate : 998.73);
+
+  const defaultLineItems = [
+    { service: 'Brake Pad & Rotor Replacement (Front Axle)', laborHours: 2.0, laborCost: 330.00, partsRetail: 210.00, totalLine: 540.00 },
+    { service: 'Synthetic Engine Oil & Filter Change', laborHours: 0.5, laborCost: 82.50, partsRetail: 45.00, totalLine: 127.50 },
+    { service: 'Engine Air & Cabin Microfilter Replacement', laborHours: 0.5, laborCost: 82.50, partsRetail: 65.00, totalLine: 147.50 }
+  ];
+
+  const itemsToRender = (Array.isArray(lineItems) && lineItems.length > 0) ? lineItems : defaultLineItems;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Repair Order ${roNumber} — ${vehicleStr}</title>
+  <title>Repair Order ${safeRoNumber} — ${vehicleStr}</title>
   <style>
     ${BASE_PRINT_STYLES}
   </style>
@@ -1636,21 +1785,21 @@ export function generateRepairOrderPdfBlob({
       </div>
       <div class="doc-title-box">
         <span class="doc-type-badge">REPAIR ORDER</span>
-        <div class="doc-id-number">${roNumber}</div>
-        <div class="doc-date-text">Date: ${date}</div>
+        <div class="doc-id-number">${safeRoNumber}</div>
+        <div class="doc-date-text">Date: ${safeDate}</div>
       </div>
     </div>
 
     <div class="meta-grid">
       <div>
         <div class="meta-title">Customer Details</div>
-        <div class="meta-value-bold">${customerName}</div>
-        <div class="meta-value-sub">Phone: ${customerPhone}</div>
+        <div class="meta-value-bold">${safeCustomerName}</div>
+        <div class="meta-value-sub">Phone: ${safeCustomerPhone}</div>
       </div>
       <div>
         <div class="meta-title">Vehicle Information</div>
         <div class="meta-value-bold">${vehicleStr}</div>
-        <div class="meta-value-sub">VIN: ${vehicleProfile.vin || 'N/A'} | Mileage: ${vehicleProfile.mileage || 'N/A'}</div>
+        <div class="meta-value-sub">VIN: ${safeVehicle.vin || 'N/A'} | Mileage: ${safeVehicle.mileage || 'N/A'}</div>
       </div>
     </div>
 
@@ -1659,21 +1808,27 @@ export function generateRepairOrderPdfBlob({
         <tr>
           <th>Operation / Part Description</th>
           <th class="text-center">Labor Hrs</th>
-          <th class="text-right">Labor ($${laborRate}/hr)</th>
+          <th class="text-right">Labor ($${safeLaborRate}/hr)</th>
           <th class="text-right">Parts</th>
           <th class="text-right">Total</th>
         </tr>
       </thead>
       <tbody>
-        ${lineItems.map(item => `
-          <tr>
-            <td><strong>${item.service || item.description || item.name}</strong></td>
-            <td class="text-center">${item.laborHours || 1}</td>
-            <td class="text-right">${formatCurrency(item.laborCost || ((item.laborHours || 1) * laborRate))}</td>
-            <td class="text-right">${formatCurrency(item.partsRetail || item.partsCost || 0)}</td>
-            <td class="text-right"><strong>${formatCurrency(item.totalLine || ((item.laborHours || 1) * laborRate + (item.partsRetail || 0)))}</strong></td>
-          </tr>
-        `).join('')}
+        ${itemsToRender.map(item => {
+          const lHrs = item?.laborHours || 1;
+          const lCost = item?.laborCost !== undefined && item?.laborCost !== null ? item.laborCost : (lHrs * safeLaborRate);
+          const pCost = item?.partsRetail !== undefined && item?.partsRetail !== null ? item.partsRetail : (item?.partsCost || 0);
+          const tLine = item?.totalLine !== undefined && item?.totalLine !== null ? item.totalLine : (lCost + pCost);
+          return `
+            <tr>
+              <td><strong>${item?.service || item?.description || item?.name || 'Service Item'}</strong></td>
+              <td class="text-center">${lHrs}</td>
+              <td class="text-right">${formatCurrency(lCost)}</td>
+              <td class="text-right">${formatCurrency(pCost)}</td>
+              <td class="text-right"><strong>${formatCurrency(tLine)}</strong></td>
+            </tr>
+          `;
+        }).join('')}
       </tbody>
     </table>
 
@@ -1681,23 +1836,23 @@ export function generateRepairOrderPdfBlob({
       <div class="totals-card">
         <div class="total-line">
           <span>Labor Total:</span>
-          <span>${formatCurrency(totalLaborPrice)}</span>
+          <span>${formatCurrency(safeTotalLaborPrice)}</span>
         </div>
         <div class="total-line">
           <span>Parts Total:</span>
-          <span>${formatCurrency(partsRetailTotal)}</span>
+          <span>${formatCurrency(safePartsRetailTotal)}</span>
         </div>
         <div class="total-line">
           <span>Shop Supplies (5%):</span>
-          <span>${formatCurrency(shopSuppliesFee)}</span>
+          <span>${formatCurrency(safeShopSuppliesFee)}</span>
         </div>
         <div class="total-line">
           <span>Sales Tax (8.25%):</span>
-          <span>${formatCurrency(estimatedTax)}</span>
+          <span>${formatCurrency(safeEstimatedTax)}</span>
         </div>
         <div class="total-line grand-total">
           <span>Grand Total:</span>
-          <span>${formatCurrency(grandTotalEstimate)}</span>
+          <span>${formatCurrency(safeGrandTotalEstimate)}</span>
         </div>
       </div>
     </div>
@@ -1714,7 +1869,7 @@ export function generateRepairOrderPdfBlob({
 </body>
 </html>`;
 
-  const filename = `RepairOrder_${sanitizeFilename(roNumber)}_${sanitizeFilename(customerName)}.html`;
+  const filename = `RepairOrder_${sanitizeFilename(safeRoNumber)}_${sanitizeFilename(safeCustomerName)}.html`;
   return createDocumentBlob(html, filename);
 }
 
@@ -1722,16 +1877,33 @@ export function generateRepairOrderPdfBlob({
 // 11. DVI INSPECTION REPORT GENERATOR (Auto Repair)
 // ============================================================================
 
-export function generateDviReportPdfBlob({
-  vehicleProfile = {},
-  healthScore = 88,
-  counts = { green: 18, yellow: 4, red: 2 },
-  allItems = [],
-  businessData = {},
-  date = new Date().toLocaleDateString()
-} = {}) {
-  const companyName = businessData?.name || 'OmniBiz Auto Services';
-  const vehicleStr = `${vehicleProfile.modelYear || ''} ${vehicleProfile.make || ''} ${vehicleProfile.model || ''}`.trim() || 'Customer Vehicle';
+export function generateDviReportPdfBlob(params = {}) {
+  const {
+    vehicleProfile = {},
+    healthScore = 88,
+    counts = { green: 18, yellow: 4, red: 2 },
+    allItems = [],
+    businessData = {},
+    date = new Date().toLocaleDateString()
+  } = params || {};
+
+  const safeBiz = businessData && typeof businessData === 'object' ? businessData : {};
+  const safeVehicle = vehicleProfile && typeof vehicleProfile === 'object' ? vehicleProfile : {};
+  const vehicleStr = `${safeVehicle.modelYear || ''} ${safeVehicle.make || ''} ${safeVehicle.model || ''}`.trim() || 'Customer Vehicle';
+  const safeCounts = counts && typeof counts === 'object' ? counts : {};
+  const safeHealthScore = Number(healthScore !== undefined && healthScore !== null ? healthScore : 88);
+  const companyName = safeBiz.name || 'OmniBiz Auto Services';
+  const safeDate = date || new Date().toLocaleDateString();
+
+  const defaultItems = [
+    { name: 'Brake Pad Thickness (Front)', note: '6mm remaining (Safe)', status: 'green' },
+    { name: 'Engine Oil Quality & Level', note: 'Clean synthetic fluid', status: 'green' },
+    { name: 'Battery State of Health (CCA)', note: '520 / 650 CCA (Weak reserve)', status: 'yellow' },
+    { name: 'Cabin Air Filter', note: 'Heavy dust / allergen accumulation', status: 'yellow' },
+    { name: 'Serpentine Drive Belt', note: 'Severe edge fraying & dry rot', status: 'red' }
+  ];
+
+  const itemsToRender = (Array.isArray(allItems) && allItems.length > 0) ? allItems : defaultItems;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -1754,8 +1926,8 @@ export function generateDviReportPdfBlob({
       </div>
       <div class="doc-title-box">
         <span class="doc-type-badge">24-POINT DVI</span>
-        <div class="doc-id-number">${healthScore}% Health Score</div>
-        <div class="doc-date-text">Inspected: ${date}</div>
+        <div class="doc-id-number">${safeHealthScore}% Health Score</div>
+        <div class="doc-date-text">Inspected: ${safeDate}</div>
       </div>
     </div>
 
@@ -1763,12 +1935,12 @@ export function generateDviReportPdfBlob({
       <div>
         <div class="meta-title">Vehicle Under Inspection</div>
         <div class="meta-value-bold">${vehicleStr}</div>
-        <div class="meta-value-sub">VIN: ${vehicleProfile.vin || 'N/A'} | Mileage: ${vehicleProfile.mileage || 'N/A'}</div>
+        <div class="meta-value-sub">VIN: ${safeVehicle.vin || 'N/A'} | Mileage: ${safeVehicle.mileage || 'N/A'}</div>
       </div>
       <div>
         <div class="meta-title">Inspection Summary</div>
-        <div class="meta-value-bold" style="color: #059669;">${counts.green || 0} Passed (Good)</div>
-        <div class="meta-value-sub" style="color: #d97706;">${counts.yellow || 0} Future Attention | <span style="color: #dc2626; font-weight: bold;">${counts.red || 0} Immediate Attention</span></div>
+        <div class="meta-value-bold" style="color: #059669;">${safeCounts.green || 0} Passed (Good)</div>
+        <div class="meta-value-sub" style="color: #d97706;">${safeCounts.yellow || 0} Future Attention | <span style="color: #dc2626; font-weight: bold;">${safeCounts.red || 0} Immediate Attention</span></div>
       </div>
     </div>
 
@@ -1781,12 +1953,12 @@ export function generateDviReportPdfBlob({
         </tr>
       </thead>
       <tbody>
-        ${allItems.map(item => `
+        ${itemsToRender.map(item => `
           <tr>
-            <td><strong>${item.name || item.system || 'Component'}</strong></td>
-            <td style="font-size: 12px; color: #4b5563;">${item.note || item.condition || 'Checked'}</td>
-            <td class="text-right" style="font-weight: 700; color: ${item.status === 'red' ? '#dc2626' : item.status === 'yellow' ? '#d97706' : '#059669'};">
-              ${item.status ? item.status.toUpperCase() : 'PASSED'}
+            <td><strong>${item?.name || item?.system || 'Component'}</strong></td>
+            <td style="font-size: 12px; color: #4b5563;">${item?.note || item?.condition || 'Checked'}</td>
+            <td class="text-right" style="font-weight: 700; color: ${item?.status === 'red' ? '#dc2626' : item?.status === 'yellow' ? '#d97706' : '#059669'};">
+              ${item?.status ? String(item.status).toUpperCase() : 'PASSED'}
             </td>
           </tr>
         `).join('')}
@@ -1808,26 +1980,46 @@ export function generateDviReportPdfBlob({
 // 12. CHANGE ORDER GENERATOR (Roofing/Solar)
 // ============================================================================
 
-export function generateChangeOrderPdfBlob({
-  changeOrderNumber = `CO-001-${Date.now().toString().slice(-4)}`,
-  propertyAddress = '3210 Barton Skyway, Austin, TX',
-  originalContractValue = 18500,
-  totalAddedScopeCost = 2030,
-  revisedTotalContractValue = 20530,
-  totalAddedWorkingDays = 1.0,
-  items = [],
-  signerName = 'Authorized Homeowner',
-  signedDate = new Date().toLocaleDateString(),
-  signatureAuditHash = `SHA256-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-  businessData = {}
-} = {}) {
-  const companyName = businessData?.name || 'OmniBiz Roofing & Solar';
+export function generateChangeOrderPdfBlob(params = {}) {
+  const {
+    changeOrderNumber = `CO-001-${Date.now().toString().slice(-4)}`,
+    propertyAddress = '3210 Barton Skyway, Austin, TX',
+    originalContractValue = 18500,
+    totalAddedScopeCost = 2030,
+    revisedTotalContractValue = 20530,
+    totalAddedWorkingDays = 1.0,
+    items = [],
+    signerName = 'Authorized Homeowner',
+    signedDate = new Date().toLocaleDateString(),
+    signatureAuditHash = `SHA256-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+    businessData = {}
+  } = params || {};
+
+  const safeBiz = businessData && typeof businessData === 'object' ? businessData : {};
+  const safeChangeOrderNumber = changeOrderNumber || `CO-001-${Date.now().toString().slice(-4)}`;
+  const safePropertyAddress = propertyAddress || '3210 Barton Skyway, Austin, TX';
+  const safeOriginalContract = Number(originalContractValue !== undefined && originalContractValue !== null ? originalContractValue : 18500);
+  const safeAddedCost = Number(totalAddedScopeCost !== undefined && totalAddedScopeCost !== null ? totalAddedScopeCost : 2030);
+  const safeRevisedTotal = Number(revisedTotalContractValue !== undefined && revisedTotalContractValue !== null ? revisedTotalContractValue : (safeOriginalContract + safeAddedCost));
+  const safeAddedDays = Number(totalAddedWorkingDays !== undefined && totalAddedWorkingDays !== null ? totalAddedWorkingDays : 1.0);
+  const safeSignerName = signerName || 'Authorized Homeowner';
+  const safeSignedDate = signedDate || new Date().toLocaleDateString();
+  const safeAuditHash = signatureAuditHash || `SHA256-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+  const companyName = safeBiz.name || 'OmniBiz Roofing & Solar';
+
+  const defaultItems = [
+    { description: 'Replace Rotted CDX Plywood Decking (4 Sheets)', addedDays: 0.5, addedCost: 380.00 },
+    { description: 'Upgrade to GAF Timbertex Premium Ridge Cap', addedDays: 0, addedCost: 450.00 },
+    { description: 'Install Additional High-Capacity Attic Ridge Vent (20 LF)', addedDays: 0.5, addedCost: 650.00 }
+  ];
+
+  const itemsToRender = (Array.isArray(items) && items.length > 0) ? items : defaultItems;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Change Order ${changeOrderNumber}</title>
+  <title>Change Order ${safeChangeOrderNumber}</title>
   <style>
     ${BASE_PRINT_STYLES}
   </style>
@@ -1844,21 +2036,21 @@ export function generateChangeOrderPdfBlob({
       </div>
       <div class="doc-title-box">
         <span class="doc-type-badge">CHANGE ORDER</span>
-        <div class="doc-id-number">${changeOrderNumber}</div>
-        <div class="doc-date-text">Date: ${signedDate}</div>
+        <div class="doc-id-number">${safeChangeOrderNumber}</div>
+        <div class="doc-date-text">Date: ${safeSignedDate}</div>
       </div>
     </div>
 
     <div class="meta-grid">
       <div>
         <div class="meta-title">Project Site</div>
-        <div class="meta-value-bold">${propertyAddress}</div>
-        <div class="meta-value-sub">Original Contract: ${formatCurrency(originalContractValue)}</div>
+        <div class="meta-value-bold">${safePropertyAddress}</div>
+        <div class="meta-value-sub">Original Contract: ${formatCurrency(safeOriginalContract)}</div>
       </div>
       <div>
         <div class="meta-title">Revised Financials</div>
-        <div class="meta-value-bold">${formatCurrency(revisedTotalContractValue)}</div>
-        <div class="meta-value-sub">Added Cost: +${formatCurrency(totalAddedScopeCost)} | Schedule Impact: +${totalAddedWorkingDays} Days</div>
+        <div class="meta-value-bold">${formatCurrency(safeRevisedTotal)}</div>
+        <div class="meta-value-sub">Added Cost: +${formatCurrency(safeAddedCost)} | Schedule Impact: +${safeAddedDays} Days</div>
       </div>
     </div>
 
@@ -1871,11 +2063,11 @@ export function generateChangeOrderPdfBlob({
         </tr>
       </thead>
       <tbody>
-        ${items.map(item => `
+        ${itemsToRender.map(item => `
           <tr>
-            <td><strong>${item.description || item.name}</strong></td>
-            <td class="text-center">+${item.addedDays || 0} days</td>
-            <td class="text-right"><strong>+${formatCurrency(item.addedCost || 0)}</strong></td>
+            <td><strong>${item?.description || item?.name || 'Scope Modification'}</strong></td>
+            <td class="text-center">+${item?.addedDays || 0} days</td>
+            <td class="text-right"><strong>+${formatCurrency(item?.addedCost || 0)}</strong></td>
           </tr>
         `).join('')}
       </tbody>
@@ -1884,9 +2076,9 @@ export function generateChangeOrderPdfBlob({
     <div class="avoid-break" style="margin-top: 24px; padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;">
       <div class="meta-title">Homeowner Electronic Signature Authorization</div>
       <div style="font-family: 'Brush Script MT', cursive; font-size: 22px; color: #1e40af; margin: 8px 0;">
-        ${signerName}
+        ${safeSignerName}
       </div>
-      <div style="font-size: 11px; color: #4b5563;">Date: ${signedDate} | SHA-256 Audit: <code style="color: #059669;">${signatureAuditHash}</code></div>
+      <div style="font-size: 11px; color: #4b5563;">Date: ${safeSignedDate} | SHA-256 Audit: <code style="color: #059669;">${safeAuditHash}</code></div>
       <div style="margin-top: 10px;">
         ${renderVerifiedStampSvg('CHANGE ORDER EXECUTED', '#059669')}
       </div>
@@ -1895,7 +2087,7 @@ export function generateChangeOrderPdfBlob({
 </body>
 </html>`;
 
-  const filename = `ChangeOrder_${sanitizeFilename(changeOrderNumber)}.html`;
+  const filename = `ChangeOrder_${sanitizeFilename(safeChangeOrderNumber)}.html`;
   return createDocumentBlob(html, filename);
 }
 
@@ -1903,31 +2095,47 @@ export function generateChangeOrderPdfBlob({
 // 13. ROOF & SOLAR TAKEOFF PROPOSAL GENERATOR
 // ============================================================================
 
-export function generateRoofSolarProposalPdfBlob({
-  customerName = 'Homeowner',
-  propertyAddress = 'Residential Property',
-  footprintSqFt = 2400,
-  pitchInches = '6/12',
-  pitchMultiplier = 1.118,
-  actualSurfaceSqFt = 2683,
-  squaresWithWaste = 30,
-  shingleBundles = 90,
-  underlaymentRolls = 3,
-  solarSystemKwDc = 9.6,
-  estimatedPanelCount = 24,
-  annualGenerationKwh = 13440,
-  annualElectricSavings = 2150,
-  netSolarCost = 16800,
-  businessData = {},
-  date = new Date().toLocaleDateString()
-} = {}) {
-  const companyName = businessData?.name || 'OmniBiz Roofing & Solar';
+export function generateRoofSolarProposalPdfBlob(params = {}) {
+  const {
+    customerName = 'Homeowner',
+    propertyAddress = 'Residential Property',
+    footprintSqFt = 2400,
+    pitchInches = '6/12',
+    pitchMultiplier = 1.118,
+    actualSurfaceSqFt = 2683,
+    squaresWithWaste = 30,
+    shingleBundles = 90,
+    underlaymentRolls = 3,
+    solarSystemKwDc = 9.6,
+    estimatedPanelCount = 24,
+    annualGenerationKwh = 13440,
+    annualElectricSavings = 2150,
+    netSolarCost = 16800,
+    businessData = {},
+    date = new Date().toLocaleDateString()
+  } = params || {};
+
+  const safeBiz = businessData && typeof businessData === 'object' ? businessData : {};
+  const safeCustomerName = customerName || 'Homeowner';
+  const safePropertyAddress = propertyAddress || 'Residential Property';
+  const safeSquares = Number(squaresWithWaste !== undefined && squaresWithWaste !== null ? squaresWithWaste : 30);
+  const safeActualSurface = Number(actualSurfaceSqFt !== undefined && actualSurfaceSqFt !== null ? actualSurfaceSqFt : 2683);
+  const safePitchInches = pitchInches || '6/12';
+  const safeShingleBundles = Number(shingleBundles !== undefined && shingleBundles !== null ? shingleBundles : 90);
+  const safeUnderlaymentRolls = Number(underlaymentRolls !== undefined && underlaymentRolls !== null ? underlaymentRolls : 3);
+  const safeSolarKw = Number(solarSystemKwDc !== undefined && solarSystemKwDc !== null ? solarSystemKwDc : 9.6);
+  const safePanels = Number(estimatedPanelCount !== undefined && estimatedPanelCount !== null ? estimatedPanelCount : 24);
+  const safeAnnualGen = Number(annualGenerationKwh !== undefined && annualGenerationKwh !== null ? annualGenerationKwh : 13440);
+  const safeSavings = Number(annualElectricSavings !== undefined && annualElectricSavings !== null ? annualElectricSavings : 2150);
+  const safeNetSolar = Number(netSolarCost !== undefined && netSolarCost !== null ? netSolarCost : 16800);
+  const companyName = safeBiz.name || 'OmniBiz Roofing & Solar';
+  const safeDate = date || new Date().toLocaleDateString();
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Roof & Solar Takeoff — ${customerName}</title>
+  <title>Roof & Solar Takeoff — ${safeCustomerName}</title>
   <style>
     ${BASE_PRINT_STYLES}
   </style>
@@ -1944,31 +2152,31 @@ export function generateRoofSolarProposalPdfBlob({
       </div>
       <div class="doc-title-box">
         <span class="doc-type-badge">ROOF & SOLAR TAKEOFF</span>
-        <div class="doc-id-number">${squaresWithWaste} Squares</div>
-        <div class="doc-date-text">Date: ${date}</div>
+        <div class="doc-id-number">${safeSquares} Squares</div>
+        <div class="doc-date-text">Date: ${safeDate}</div>
       </div>
     </div>
 
     <div class="meta-grid">
       <div>
         <div class="meta-title">Property Owner</div>
-        <div class="meta-value-bold">${customerName}</div>
-        <div class="meta-value-sub">${propertyAddress}</div>
+        <div class="meta-value-bold">${safeCustomerName}</div>
+        <div class="meta-value-sub">${safePropertyAddress}</div>
       </div>
       <div>
         <div class="meta-title">Roof Dimensions</div>
-        <div class="meta-value-bold">${actualSurfaceSqFt} sq ft (${pitchInches} Pitch)</div>
-        <div class="meta-value-sub">${shingleBundles} Bundles Shingles | ${underlaymentRolls} Rolls Underlayment</div>
+        <div class="meta-value-bold">${safeActualSurface} sq ft (${safePitchInches} Pitch)</div>
+        <div class="meta-value-sub">${safeShingleBundles} Bundles Shingles | ${safeUnderlaymentRolls} Rolls Underlayment</div>
       </div>
     </div>
 
     <h4 style="font-size: 13px; text-transform: uppercase; color: #111827; margin-bottom: 8px;">Solar Offset &amp; Generation Matrix</h4>
     <div class="avoid-break" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 16px; margin-bottom: 20px;">
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
-        <div><strong>System Size:</strong> ${solarSystemKwDc} kW DC (${estimatedPanelCount} Premium Panels)</div>
-        <div><strong>Est. Annual Generation:</strong> ${annualGenerationKwh.toLocaleString()} kWh/yr</div>
-        <div><strong>Est. Annual Electric Savings:</strong> ${formatCurrency(annualElectricSavings)}/yr</div>
-        <div><strong>Net Turnkey Investment:</strong> ${formatCurrency(netSolarCost)}</div>
+        <div><strong>System Size:</strong> ${safeSolarKw} kW DC (${safePanels} Premium Panels)</div>
+        <div><strong>Est. Annual Generation:</strong> ${safeAnnualGen.toLocaleString()} kWh/yr</div>
+        <div><strong>Est. Annual Electric Savings:</strong> ${formatCurrency(safeSavings)}/yr</div>
+        <div><strong>Net Turnkey Investment:</strong> ${formatCurrency(safeNetSolar)}</div>
       </div>
     </div>
 
@@ -1979,7 +2187,7 @@ export function generateRoofSolarProposalPdfBlob({
 </body>
 </html>`;
 
-  const filename = `Roof_Solar_Proposal_${sanitizeFilename(customerName)}.html`;
+  const filename = `Roof_Solar_Proposal_${sanitizeFilename(safeCustomerName)}.html`;
   return createDocumentBlob(html, filename);
 }
 
@@ -1987,34 +2195,54 @@ export function generateRoofSolarProposalPdfBlob({
 // 14. BANQUET EVENT ORDER (BEO) GENERATOR (Restaurant/Bar)
 // ============================================================================
 
-export function generateBanquetEventOrderPdfBlob({
-  beoDocumentNumber = `BEO-${Date.now().toString().slice(-5)}`,
-  eventTitle = 'Private Catering Gala',
-  clientName = 'Valued Client',
-  clientPhone = 'N/A',
-  date = '2026-09-18',
-  time = '6:00 PM - 10:30 PM',
-  space = 'Main Dining Room',
-  guestCount = 50,
-  foodSubtotal = 3000.00,
-  beverageSubtotal = 1200.00,
-  roomRentalFee = 500.00,
-  serviceGratuity = 840.00,
-  salesTax = 415.80,
-  totalContractValue = 5955.80,
-  depositRequired = 2977.90,
-  depositPaid = 2977.90,
-  depositStatus = 'PAID_IN_FULL',
-  dietaryNotes = 'None reported',
-  businessData = {}
-} = {}) {
-  const companyName = businessData?.name || 'OmniBiz Restaurant & Bar';
+export function generateBanquetEventOrderPdfBlob(params = {}) {
+  const {
+    beoDocumentNumber = `BEO-${Date.now().toString().slice(-5)}`,
+    eventTitle = 'Private Catering Gala',
+    clientName = 'Valued Client',
+    clientPhone = 'N/A',
+    date = '2026-09-18',
+    time = '6:00 PM - 10:30 PM',
+    space = 'Main Dining Room',
+    guestCount = 50,
+    foodSubtotal = 3000.00,
+    beverageSubtotal = 1200.00,
+    roomRentalFee = 500.00,
+    serviceGratuity = 840.00,
+    salesTax = 415.80,
+    totalContractValue = 5955.80,
+    depositRequired = 2977.90,
+    depositPaid = 2977.90,
+    depositStatus = 'PAID_IN_FULL',
+    dietaryNotes = 'None reported',
+    businessData = {}
+  } = params || {};
+
+  const safeBiz = businessData && typeof businessData === 'object' ? businessData : {};
+  const safeBeoNumber = beoDocumentNumber || `BEO-${Date.now().toString().slice(-5)}`;
+  const safeEventTitle = eventTitle || 'Private Catering Gala';
+  const safeClientName = clientName || 'Valued Client';
+  const safeClientPhone = clientPhone || 'N/A';
+  const safeDate = date || '2026-09-18';
+  const safeTime = time || '6:00 PM - 10:30 PM';
+  const safeSpace = space || 'Main Dining Room';
+  const safeGuestCount = Number(guestCount !== undefined && guestCount !== null ? guestCount : 50);
+  const safeFood = Number(foodSubtotal !== undefined && foodSubtotal !== null ? foodSubtotal : 3000.00);
+  const safeBeverage = Number(beverageSubtotal !== undefined && beverageSubtotal !== null ? beverageSubtotal : 1200.00);
+  const safeRoom = Number(roomRentalFee !== undefined && roomRentalFee !== null ? roomRentalFee : 500.00);
+  const safeGratuity = Number(serviceGratuity !== undefined && serviceGratuity !== null ? serviceGratuity : 840.00);
+  const safeTax = Number(salesTax !== undefined && salesTax !== null ? salesTax : 415.80);
+  const safeTotal = Number(totalContractValue !== undefined && totalContractValue !== null ? totalContractValue : (safeFood + safeBeverage + safeRoom + safeGratuity + safeTax));
+  const safeDepositPaid = Number(depositPaid !== undefined && depositPaid !== null ? depositPaid : 2977.90);
+  const safeDepositStatus = depositStatus || 'PAID_IN_FULL';
+  const safeDietary = dietaryNotes || 'None reported';
+  const companyName = safeBiz.name || 'OmniBiz Restaurant & Bar';
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BEO — ${eventTitle}</title>
+  <title>BEO — ${safeEventTitle}</title>
   <style>
     ${BASE_PRINT_STYLES}
   </style>
@@ -2031,27 +2259,27 @@ export function generateBanquetEventOrderPdfBlob({
       </div>
       <div class="doc-title-box">
         <span class="doc-type-badge">BANQUET EVENT ORDER</span>
-        <div class="doc-id-number">${beoDocumentNumber}</div>
-        <div class="doc-date-text">${date} (${time})</div>
+        <div class="doc-id-number">${safeBeoNumber}</div>
+        <div class="doc-date-text">${safeDate} (${safeTime})</div>
       </div>
     </div>
 
     <div class="meta-grid">
       <div>
         <div class="meta-title">Event &amp; Host</div>
-        <div class="meta-value-bold">${eventTitle}</div>
-        <div class="meta-value-sub">Host: ${clientName} (${clientPhone})</div>
+        <div class="meta-value-bold">${safeEventTitle}</div>
+        <div class="meta-value-sub">Host: ${safeClientName} (${safeClientPhone})</div>
       </div>
       <div>
         <div class="meta-title">Space &amp; Headcount</div>
-        <div class="meta-value-bold">${guestCount} Guests • ${space}</div>
-        <div class="meta-value-sub">Deposit Status: ${depositStatus}</div>
+        <div class="meta-value-bold">${safeGuestCount} Guests • ${safeSpace}</div>
+        <div class="meta-value-sub">Deposit Status: ${safeDepositStatus}</div>
       </div>
     </div>
 
     <div class="avoid-break" style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 6px; padding: 14px; margin-bottom: 20px;">
       <strong style="color: #9f1239; font-size: 12px;">CRITICAL ALLERGIES &amp; DIETARY REQUIREMENTS:</strong>
-      <div style="font-size: 13px; color: #881337; margin-top: 4px;">${dietaryNotes}</div>
+      <div style="font-size: 13px; color: #881337; margin-top: 4px;">${safeDietary}</div>
     </div>
 
     <table class="data-table">
@@ -2065,28 +2293,28 @@ export function generateBanquetEventOrderPdfBlob({
       <tbody>
         <tr>
           <td><strong>Food Catering</strong></td>
-          <td>Executive Banquet Menu (${guestCount} Covers)</td>
-          <td class="text-right">${formatCurrency(foodSubtotal)}</td>
+          <td>Executive Banquet Menu (${safeGuestCount} Covers)</td>
+          <td class="text-right">${formatCurrency(safeFood)}</td>
         </tr>
         <tr>
           <td><strong>Beverage Bar</strong></td>
           <td>Sommelier &amp; Craft Cocktail Service</td>
-          <td class="text-right">${formatCurrency(beverageSubtotal)}</td>
+          <td class="text-right">${formatCurrency(safeBeverage)}</td>
         </tr>
         <tr>
           <td><strong>Facility Rental</strong></td>
-          <td>${space} Private Buyout</td>
-          <td class="text-right">${formatCurrency(roomRentalFee)}</td>
+          <td>${safeSpace} Private Buyout</td>
+          <td class="text-right">${formatCurrency(safeRoom)}</td>
         </tr>
         <tr>
           <td><strong>Service Gratuity</strong></td>
           <td>Staff Service Charge (20%)</td>
-          <td class="text-right">${formatCurrency(serviceGratuity)}</td>
+          <td class="text-right">${formatCurrency(safeGratuity)}</td>
         </tr>
         <tr>
           <td><strong>Sales Tax</strong></td>
           <td>Applicable State &amp; Local Tax (8.25%)</td>
-          <td class="text-right">${formatCurrency(salesTax)}</td>
+          <td class="text-right">${formatCurrency(safeTax)}</td>
         </tr>
       </tbody>
     </table>
@@ -2095,11 +2323,11 @@ export function generateBanquetEventOrderPdfBlob({
       <div class="totals-card">
         <div class="total-line">
           <span>Deposit Paid:</span>
-          <span>${formatCurrency(depositPaid)}</span>
+          <span>${formatCurrency(safeDepositPaid)}</span>
         </div>
         <div class="total-line grand-total">
           <span>Total BEO Value:</span>
-          <span>${formatCurrency(totalContractValue)}</span>
+          <span>${formatCurrency(safeTotal)}</span>
         </div>
       </div>
     </div>
@@ -2111,7 +2339,7 @@ export function generateBanquetEventOrderPdfBlob({
 </body>
 </html>`;
 
-  const filename = `BEO_${sanitizeFilename(beoDocumentNumber)}_${sanitizeFilename(eventTitle)}.html`;
+  const filename = `BEO_${sanitizeFilename(safeBeoNumber)}_${sanitizeFilename(safeEventTitle)}.html`;
   return createDocumentBlob(html, filename);
 }
 
@@ -2119,26 +2347,39 @@ export function generateBanquetEventOrderPdfBlob({
 // 15. DISPUTE CREDIT MEMO GENERATOR (Restaurant/Bar)
 // ============================================================================
 
-export function generateDisputeCreditMemoPdfBlob({
-  disputeNumber = `DISP-${Date.now().toString().slice(-5)}`,
-  supplier = 'US Foods',
-  sku = 'SKU-9921',
-  description = 'Prime Ribeye 14oz (Case)',
-  baselinePrice = 140.00,
-  invoicePrice = 168.00,
-  varianceAmount = 28.00,
-  variancePercent = 20.0,
-  creditMemoAmount = 28.00,
-  businessData = {},
-  date = new Date().toLocaleDateString()
-} = {}) {
-  const companyName = businessData?.name || 'OmniBiz Operations';
+export function generateDisputeCreditMemoPdfBlob(params = {}) {
+  const {
+    disputeNumber = `DISP-${Date.now().toString().slice(-5)}`,
+    supplier = 'US Foods',
+    sku = 'SKU-9921',
+    description = 'Prime Ribeye 14oz (Case)',
+    baselinePrice = 140.00,
+    invoicePrice = 168.00,
+    varianceAmount = 28.00,
+    variancePercent = 20.0,
+    creditMemoAmount = 28.00,
+    businessData = {},
+    date = new Date().toLocaleDateString()
+  } = params || {};
+
+  const safeBiz = businessData && typeof businessData === 'object' ? businessData : {};
+  const safeDisputeNumber = disputeNumber || `DISP-${Date.now().toString().slice(-5)}`;
+  const safeSupplier = supplier || 'US Foods';
+  const safeSku = sku || 'SKU-9921';
+  const safeDesc = description || 'Prime Ribeye 14oz (Case)';
+  const safeBaseline = Number(baselinePrice !== undefined && baselinePrice !== null ? baselinePrice : 140.00);
+  const safeInvoicePrice = Number(invoicePrice !== undefined && invoicePrice !== null ? invoicePrice : 168.00);
+  const safeVarianceAmount = Number(varianceAmount !== undefined && varianceAmount !== null ? varianceAmount : (safeInvoicePrice - safeBaseline));
+  const safeVariancePercent = Number(variancePercent !== undefined && variancePercent !== null ? variancePercent : (safeBaseline > 0 ? (safeVarianceAmount / safeBaseline) * 100 : 0));
+  const safeCreditAmount = Number(creditMemoAmount !== undefined && creditMemoAmount !== null ? creditMemoAmount : safeVarianceAmount);
+  const companyName = safeBiz.name || 'OmniBiz Operations';
+  const safeDate = date || new Date().toLocaleDateString();
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Dispute Credit Memo — ${supplier}</title>
+  <title>Dispute Credit Memo — ${safeSupplier}</title>
   <style>
     ${BASE_PRINT_STYLES}
   </style>
@@ -2155,21 +2396,21 @@ export function generateDisputeCreditMemoPdfBlob({
       </div>
       <div class="doc-title-box">
         <span class="doc-type-badge" style="color: #b91c1c; background: #fee2e2;">CREDIT DISPUTE</span>
-        <div class="doc-id-number">${disputeNumber}</div>
-        <div class="doc-date-text">Date: ${date}</div>
+        <div class="doc-id-number">${safeDisputeNumber}</div>
+        <div class="doc-date-text">Date: ${safeDate}</div>
       </div>
     </div>
 
     <div class="meta-grid">
       <div>
         <div class="meta-title">Supplier</div>
-        <div class="meta-value-bold">${supplier}</div>
-        <div class="meta-value-sub">Disputed SKU: ${sku}</div>
+        <div class="meta-value-bold">${safeSupplier}</div>
+        <div class="meta-value-sub">Disputed SKU: ${safeSku}</div>
       </div>
       <div>
         <div class="meta-title">Credit Claim</div>
-        <div class="meta-value-bold" style="color: #b91c1c;">${formatCurrency(creditMemoAmount)} Refund Requested</div>
-        <div class="meta-value-sub">Price Variance: +${variancePercent}% over agreed contract baseline</div>
+        <div class="meta-value-bold" style="color: #b91c1c;">${formatCurrency(safeCreditAmount)} Refund Requested</div>
+        <div class="meta-value-sub">Price Variance: +${safeVariancePercent}% over agreed contract baseline</div>
       </div>
     </div>
 
@@ -2184,22 +2425,22 @@ export function generateDisputeCreditMemoPdfBlob({
       </thead>
       <tbody>
         <tr>
-          <td><strong>${description}</strong></td>
-          <td>${formatCurrency(baselinePrice)}</td>
-          <td>${formatCurrency(invoicePrice)}</td>
-          <td class="text-right" style="color: #b91c1c; font-weight: 700;">${formatCurrency(varianceAmount)}</td>
+          <td><strong>${safeDesc}</strong></td>
+          <td>${formatCurrency(safeBaseline)}</td>
+          <td>${formatCurrency(safeInvoicePrice)}</td>
+          <td class="text-right" style="color: #b91c1c; font-weight: 700;">${formatCurrency(safeVarianceAmount)}</td>
         </tr>
       </tbody>
     </table>
 
     <div class="avoid-break" style="padding: 14px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; font-size: 12px; color: #991b1b;">
-      <strong>Formal Notice of Variance:</strong> An unauthorized price hike of +${variancePercent}% was detected on invoice SKU ${sku}. Please issue a formal credit memo in the amount of <strong>${formatCurrency(creditMemoAmount)}</strong> to settle the account balance.
+      <strong>Formal Notice of Variance:</strong> An unauthorized price hike of +${safeVariancePercent}% was detected on invoice SKU ${safeSku}. Please issue a formal credit memo in the amount of <strong>${formatCurrency(safeCreditAmount)}</strong> to settle the account balance.
     </div>
   </div>
 </body>
 </html>`;
 
-  const filename = `Dispute_Credit_Memo_${sanitizeFilename(disputeNumber)}.html`;
+  const filename = `Dispute_Credit_Memo_${sanitizeFilename(safeDisputeNumber)}.html`;
   return createDocumentBlob(html, filename);
 }
 
@@ -2207,23 +2448,49 @@ export function generateDisputeCreditMemoPdfBlob({
 // 16. HACCP COMPLIANCE AUDIT GENERATOR (Restaurant/Bar)
 // ============================================================================
 
-export function generateHaccpAuditPdfBlob({
-  exportId = `HACCP-${Date.now().toString().slice(-5)}`,
-  auditTitle = 'FDA HACCP Daily Control Log',
-  facilityName = 'OmniBiz Kitchen Facility',
-  temperatureReadings = [],
-  sanitationChecks = [],
-  hasCriticalViolations = false,
-  timestamp = Date.now(),
-  businessData = {}
-} = {}) {
-  const companyName = businessData?.name || facilityName;
+export function generateHaccpAuditPdfBlob(params = {}) {
+  const {
+    exportId = `HACCP-${Date.now().toString().slice(-5)}`,
+    auditTitle = 'FDA HACCP Daily Control Log',
+    facilityName = 'OmniBiz Kitchen Facility',
+    temperatureReadings = [],
+    sanitationChecks = [],
+    hasCriticalViolations = false,
+    timestamp = Date.now(),
+    businessData = {}
+  } = params || {};
+
+  const safeBiz = businessData && typeof businessData === 'object' ? businessData : {};
+  const safeExportId = exportId || `HACCP-${Date.now().toString().slice(-5)}`;
+  const safeAuditTitle = auditTitle || 'FDA HACCP Daily Control Log';
+  const safeFacilityName = facilityName || 'OmniBiz Kitchen Facility';
+  const safeHasCritical = Boolean(hasCriticalViolations);
+  const safeTimestamp = timestamp || Date.now();
+  const companyName = safeBiz.name || safeFacilityName;
+
+  const defaultTemps = [
+    { name: 'Walk-In Cooler #1 (Proteins & Dairy)', temp: 36.5, threshold: '≤ 40°F', isViolation: false },
+    { name: 'Walk-In Cooler #2 (Produce & Prep)', temp: 38.0, threshold: '≤ 40°F', isViolation: false },
+    { name: 'Reach-In Line Cooler (Grill Station)', temp: 39.2, threshold: '≤ 40°F', isViolation: false },
+    { name: 'Deep Freezer #1 (Bulk Storage)', temp: -4.0, threshold: '≤ 0°F', isViolation: false },
+    { name: 'Steam Well #1 (Hot Holding Soup/Sauces)', temp: 152.0, threshold: '≥ 135°F', isViolation: false }
+  ];
+
+  const defaultSanitation = [
+    { title: 'Quaternary Ammonium Sanitizer Concentration (200-400 PPM)', standard: 'Tested @ 300 PPM (Pass)' },
+    { title: 'Dishwasher High-Temp Final Rinse (≥ 180°F)', standard: 'Tested @ 184°F (Pass)' },
+    { title: 'Color-Coded Cutting Board Separation (Red/Raw, Green/Produce)', standard: 'Strict Cross-Contamination Separation (Pass)' },
+    { title: 'Handwashing Sink Supply (Hot Water, Soap, Single-Use Towels)', standard: 'All 4 Stations Fully Stocked (Pass)' }
+  ];
+
+  const tempsToRender = (Array.isArray(temperatureReadings) && temperatureReadings.length > 0) ? temperatureReadings : defaultTemps;
+  const sanitationsToRender = (Array.isArray(sanitationChecks) && sanitationChecks.length > 0) ? sanitationChecks : defaultSanitation;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>HACCP Inspection Audit — ${exportId}</title>
+  <title>HACCP Inspection Audit — ${safeExportId}</title>
   <style>
     ${BASE_PRINT_STYLES}
   </style>
@@ -2239,9 +2506,9 @@ export function generateHaccpAuditPdfBlob({
         <div class="company-sub">FDA FSMA &amp; Critical Control Point (CCP) Log</div>
       </div>
       <div class="doc-title-box">
-        <span class="doc-type-badge">${hasCriticalViolations ? 'VIOLATION DETECTED' : 'CCP COMPLIANT'}</span>
-        <div class="doc-id-number">${exportId}</div>
-        <div class="doc-date-text">Time: ${new Date(timestamp).toLocaleString()}</div>
+        <span class="doc-type-badge">${safeHasCritical ? 'VIOLATION DETECTED' : 'CCP COMPLIANT'}</span>
+        <div class="doc-id-number">${safeExportId}</div>
+        <div class="doc-date-text">Time: ${new Date(safeTimestamp).toLocaleString()}</div>
       </div>
     </div>
 
@@ -2256,13 +2523,13 @@ export function generateHaccpAuditPdfBlob({
         </tr>
       </thead>
       <tbody>
-        ${temperatureReadings.map(u => `
+        ${tempsToRender.map(u => `
           <tr>
-            <td><strong>${u.name || u.unit}</strong></td>
-            <td>${u.threshold || '≤ 40°F'}</td>
-            <td><strong>${u.temp}°F</strong></td>
-            <td class="text-right" style="font-weight: 700; color: ${u.isViolation ? '#dc2626' : '#059669'};">
-              ${u.isViolation ? '⚠️ CRITICAL VIOLATION' : '✓ COMPLIANT'}
+            <td><strong>${u?.name || u?.unit || 'Unit'}</strong></td>
+            <td>${u?.threshold || '≤ 40°F'}</td>
+            <td><strong>${u?.temp !== undefined && u?.temp !== null ? u.temp : 38}°F</strong></td>
+            <td class="text-right" style="font-weight: 700; color: ${u?.isViolation ? '#dc2626' : '#059669'};">
+              ${u?.isViolation ? '⚠️ CRITICAL VIOLATION' : '✓ COMPLIANT'}
             </td>
           </tr>
         `).join('')}
@@ -2279,10 +2546,10 @@ export function generateHaccpAuditPdfBlob({
         </tr>
       </thead>
       <tbody>
-        ${sanitationChecks.map(s => `
+        ${sanitationsToRender.map(s => `
           <tr>
-            <td><strong>${s.title || s.name}</strong></td>
-            <td style="font-size: 12px; color: #4b5563;">${s.standard || 'Sanitized'}</td>
+            <td><strong>${s?.title || s?.name || 'Checkpoint'}</strong></td>
+            <td style="font-size: 12px; color: #4b5563;">${s?.standard || 'Sanitized'}</td>
             <td class="text-right" style="color: #059669; font-weight: 700;">✓ VERIFIED</td>
           </tr>
         `).join('')}
@@ -2290,12 +2557,12 @@ export function generateHaccpAuditPdfBlob({
     </table>
 
     <div style="text-align: center; margin-top: 24px;">
-      ${renderVerifiedStampSvg(hasCriticalViolations ? 'AUDIT FLAGGED' : 'HACCP VERIFIED', hasCriticalViolations ? '#dc2626' : '#059669')}
+      ${renderVerifiedStampSvg(safeHasCritical ? 'AUDIT FLAGGED' : 'HACCP VERIFIED', safeHasCritical ? '#dc2626' : '#059669')}
     </div>
   </div>
 </body>
 </html>`;
 
-  const filename = `HACCP_Audit_${sanitizeFilename(exportId)}.html`;
+  const filename = `HACCP_Audit_${sanitizeFilename(safeExportId)}.html`;
   return createDocumentBlob(html, filename);
 }

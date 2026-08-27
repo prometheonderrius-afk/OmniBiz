@@ -1,4 +1,4 @@
-# BRIEFING — 2026-08-27T11:06:45Z
+# BRIEFING — 2026-08-27T11:10:15Z
 
 ## Mission
 Deliver the complete, launch-ready, commercial-grade release of OmniBiz AI as a self-building business management ecosystem per ORIGINAL_REQUEST.md.
@@ -27,10 +27,10 @@ Deliver the complete, launch-ready, commercial-grade release of OmniBiz AI as a 
   5. Milestone M2: Sovereign Offline Sync & Real Onboarding [done]
   6. Milestone M3: Swarm Backbone & Conductor Invariants [done]
   7. Milestone M4: Dynamic Navigation & 5 Trade Vertical Suites [done]
-  8. Milestone M5: Production Document & Artifact Compilers [in-verification]
+  8. Milestone M5: Production Document & Artifact Compilers [in-progress - iteration 2 fix]
   9. Milestone M6: Final Verification & Deployment Readiness [pending]
 - **Current phase**: 2 (Execution & Verification)
-- **Current focus**: Milestone M5 Verification Gate (Reviewers, Challengers, Auditor)
+- **Current focus**: Milestone M5 Remediation (Worker M5 Fix)
 
 ## 🔒 Key Constraints
 - Never write, modify, or create source code files directly.
@@ -41,35 +41,26 @@ Deliver the complete, launch-ready, commercial-grade release of OmniBiz AI as a 
 
 ## Current Parent
 - Conversation ID: a1006e37-d3de-4226-b0e4-619a0ffacaa4
-- Updated: 2026-08-27T11:06:45Z
+- Updated: 2026-08-27T11:10:15Z
 
 ## Key Decisions Made
-- `worker_m5` completed implementation of all 16 document compilers, view hardening, Vertex AI routing, and trade suite PDF downloads.
-- Verified clean build (`npm run build`: 0 errors), 23/23 M5 unit tests passing, and 228/228 master E2E tests passing.
-- Spawning fresh M5 verification specialists (2 Reviewers, 2 Challengers, 1 Forensic Auditor).
+- Milestone M5 Iteration 1 feedback received: Auditor reported CLEAN; Reviewers M5-1 & M5-2 identified defensive null-coalescing and variable reference fixes.
+- Dispatched `worker_m5_fix` (`ae9d7922-12af-43da-ad7a-215d0735c04d`) to remediate `documentGenerator.js` and `PlumbingHvacSuite.jsx`.
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |---|---|---|---|---|
-| explorer_m5_1 | teamwork_preview_explorer | M5 Document Generator Architecture | completed | 5a2cd243-f2d9-4bc1-af1a-04c2316db5f0 |
-| explorer_m5_2 | teamwork_preview_explorer | M5 Contract & Invoice Integration | completed | 142b6794-5e8a-4be6-a016-4224d70d3e3a |
-| explorer_m5_3 | teamwork_preview_explorer | M5 Operations Artifacts & Zero-Placeholder | completed | 8cff10eb-db2d-411a-b038-4385b4e9868f |
-| worker_m5 | teamwork_preview_worker | Milestone M5 Implementation | completed | 90c26114-894b-407f-ab9c-8da782e4f07a |
-| reviewer_m5_1 | teamwork_preview_reviewer | M5 Correctness Review | in-progress | 52b6b1eb-665f-4f8f-97b2-e1d54956d848 |
-| reviewer_m5_2 | teamwork_preview_reviewer | M5 Adversarial Review | in-progress | 0657dc2d-73b3-469e-ac03-926450fec39d |
-| challenger_m5_1 | teamwork_preview_challenger | M5 Empirical Document Validator | in-progress | 4d111659-6a0c-4e7e-850c-cb027e79bf68 |
-| challenger_m5_2 | teamwork_preview_challenger | M5 Concurrency & Stress | in-progress | 80201bc1-c9d1-4429-a1f9-abf1bede4215 |
-| auditor_m5 | teamwork_preview_auditor | M5 Forensic Integrity Audit | in-progress | e669bc68-a638-4739-9852-d60a3df7b4fe |
+| worker_m5_fix | teamwork_preview_worker | Milestone M5 Remediation Fix | in-progress | ae9d7922-12af-43da-ad7a-215d0735c04d |
 
 ## Succession Status
-- Succession required: yes (threshold 16 reached, will execute upon subagent completion if needed)
-- Spawn count: 18 / 16 (current active generation)
-- Pending subagents: 52b6b1eb-665f-4f8f-97b2-e1d54956d848, 0657dc2d-73b3-469e-ac03-926450fec39d, 4d111659-6a0c-4e7e-850c-cb027e79bf68, 80201bc1-c9d1-4429-a1f9-abf1bede4215, e669bc68-a638-4739-9852-d60a3df7b4fe
+- Succession required: no
+- Spawn count: 1 / 16 (new iteration generation)
+- Pending subagents: ae9d7922-12af-43da-ad7a-215d0735c04d
 - Predecessor: none
 - Successor: not yet spawned
 
 ## Active Timers
-- Heartbeat cron: f0e8b56a-45e2-4fd7-9854-ac07d8408013/task-39
+- Heartbeat cron: f0e8b56a-45e2-4fd7-9854-ac07d8408013/task-183
 - Safety timer: none
 
 ## Artifact Index
@@ -81,4 +72,5 @@ Deliver the complete, launch-ready, commercial-grade release of OmniBiz AI as a 
 - /Users/dannyleethorntonjr./Documents/Antigravity Project/TEST_INFRA.md — E2E Test Track Specification
 - /Users/dannyleethorntonjr./Documents/Antigravity Project/TEST_READY.md — E2E Test Readiness Report (228 tests passing)
 - /Users/dannyleethorntonjr./Documents/Antigravity Project/.agents/orchestrator/GATE_STATUS.md — Gate tracking
-- /Users/dannyleethorntonjr./Documents/Antigravity Project/.agents/worker_m5/handoff.md — M5 Worker Implementation Report
+- /Users/dannyleethorntonjr./Documents/Antigravity Project/.agents/reviewer_m5_1/handoff.md — Review findings for M5 fix
+- /Users/dannyleethorntonjr./Documents/Antigravity Project/.agents/reviewer_m5_2/handoff.md — Adversarial findings for M5 fix

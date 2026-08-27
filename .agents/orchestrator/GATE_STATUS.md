@@ -45,8 +45,15 @@ Gate Result: **PASS**
 Status: **DONE**
 
 ## Milestone M5: Production Document & Artifact Compilers
-- Iteration: 0
-- Status: IN_PROGRESS
+- Iteration: 1
+- worker_m5: DONE (Vite build 0 errors, 23/23 unit tests, 228/228 E2E tests)
+- reviewer_m5_1: REQUEST_CHANGES (handoff.md: fix PlumbingHvacSuite variable references & null property traps)
+- reviewer_m5_2: REQUEST_CHANGES (handoff.md: defensive null-coalescing guards for null inputs)
+- challenger_m5_1: APPROVE (handoff.md: 48/48 empirical stress tests passing)
+- challenger_m5_2: APPROVE (handoff.md: 5,000 document concurrency stress passing)
+- auditor_m5: CLEAN (handoff.md: zero mock facades, genuine HTML/PDF & Vertex AI routing)
+Gate Result: **FAIL (reviewer_m5_1 & reviewer_m5_2 REQUEST_CHANGES)**
+Status: **IN_PROGRESS (Iteration 2 queued for successor)**
 
 ## Milestone M6: E2E Testing, Adversarial Hardening & Build Verification
 - Iteration: 0
